@@ -58,7 +58,11 @@ call string: flood
 
 Solid is meant to flood the chanmber with one solid color and give a consistant mood.
 
-@param color - a color as translated by as Neopixel strip from a R,G,B 0-255 values
+@param red - red levels 0-255
+
+@param green - green levels 0-255
+
+@param blue - blue levels 0-255
 
 @param delayLevel - the runtime of this function can be adjusted with this parameter.
                      valid values are integers between 0 (minimal time) to 10 (maximum time)
@@ -77,7 +81,12 @@ It lights the top strip, the bottom strip, then the noon, 4 o'clock, and 8 o'clo
 It then calls the rainbow function to verify alignment of all 5 strips by slowly rotating the lights 
 counter clockwise in the chamber.
 
-@param color - uint32_t color as it comes from a Neopixel strip color function with R, G, B range of 0 - 255
+
+@param red - red levels 0-255
+
+@param green - green levels 0-255
+
+@param blue - blue levels 0-255
 
 
 
