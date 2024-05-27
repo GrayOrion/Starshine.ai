@@ -62,6 +62,14 @@ const uint32_t colors[] = {
 
 const int numColors = sizeof(colors) / sizeof(colors[0]);
 
+// Define colors for rain - TODO: add these to the array above and change rain functions
+uint32_t targetColor = strip_bottom.Color(173, 216, 230); // Light blue
+uint32_t waveColor = strip_bottom.Color(0, 0, 255); // Full blue
+
+// Randomly selected starting points (where our 3 side strips reside)
+const int startPoints[3] = {0, 19, 39};
+
+
 
 // Define a buffer size large enough to hold your input string
 const int bufferSize = 100;
@@ -250,9 +258,98 @@ void loop()
 void rain()
 {
   uint32_t targetColor = strip_bottom.Color(173, 216, 230); // Light blue
-  gradualChangeToColor(targetColor, 10000); // Gradually change to light blue over 5 seconds
-  delay(5000); // Wait for a while before the next operation
+  gradualChangeToColor(targetColor, 5000); // Gradually change to light blue over 5 seconds
+  delay(1000); // Wait for a while before the next operation
+
+  for (int i = 0; i < 6; i++)
+  {
+    // Pick a random start point
+    int startIndex = random(0, 3);
+    int startPixel = startPoints[startIndex];
+    
+    createWaveEffect(startPixel, 15, 100); // Wave effect for 15 pixels, 100 ms delay between steps
+    delay(100); // Wait for a while before the next operation
+  }
 }
+
+void createWaveEffect(int startPixel, int waveLength, int delayTime)
+{
+    for (int step = 0; step < waveLength; step++)
+    {
+        // Calculate and set colors for the wave effect
+        for (int i = 0; i <= step; i++)
+        {
+            int intensity = 255; // Full intensity by default
+
+            // Reduce intensity for the last three steps
+            if (step - i <= 2)
+            {
+                intensity = 255 * (step - i + 1) / 3;
+            }
+
+            int leftPixel = (startPixel - i + LED_COUNT_bottom) % LED_COUNT_bottom;
+            int rightPixel = (startPixel + i) % LED_COUNT_bottom;
+
+            uint32_t currentColorLeft = blendColors(waveColor, targetColor, intensity);
+            uint32_t currentColorRight = blendColors(waveColor, targetColor, intensity);
+
+            strip_bottom.setPixelColor(leftPixel, currentColorLeft);
+            strip_bottom.setPixelColor(rightPixel, currentColorRight);
+            
+            uint32_t fadeColor = blendColors(waveColor, targetColor, 30);
+
+            if (i > 0)
+            {
+              leftPixel = (startPixel - i - 1 + LED_COUNT_bottom) % LED_COUNT_bottom;
+              rightPixel = (startPixel + i + 1) % LED_COUNT_bottom;
+              fadeColor = blendColors(waveColor, targetColor, 30);
+              strip_bottom.setPixelColor(leftPixel, fadeColor);
+              strip_bottom.setPixelColor(rightPixel, fadeColor);
+            }
+
+            if (i > 1)
+            {
+              leftPixel = (startPixel - i - 2 + LED_COUNT_bottom) % LED_COUNT_bottom;
+              rightPixel = (startPixel + i + 2) % LED_COUNT_bottom;
+              fadeColor = blendColors(waveColor, targetColor, 60);
+              strip_bottom.setPixelColor(leftPixel, fadeColor);
+              strip_bottom.setPixelColor(rightPixel, fadeColor);
+            }
+
+            if (i > 2)
+            {
+              leftPixel = (startPixel - i - 3 + LED_COUNT_bottom) % LED_COUNT_bottom;
+              rightPixel = (startPixel + i + 3) % LED_COUNT_bottom;
+              fadeColor = targetColor;
+              strip_bottom.setPixelColor(leftPixel, fadeColor);
+              strip_bottom.setPixelColor(rightPixel, fadeColor);
+            }
+        }
+
+        strip_bottom.show();
+        delay(delayTime);
+    }
+}
+
+uint32_t blendColors(uint32_t color1, uint32_t color2, int intensity) {
+  // Blend color1 with color2 based on the intensity (0-255)
+  uint8_t r1 = (color1 >> 16) & 0xFF;
+  uint8_t g1 = (color1 >> 8) & 0xFF;
+  uint8_t b1 = color1 & 0xFF;
+  
+  uint8_t r2 = (color2 >> 16) & 0xFF;
+  uint8_t g2 = (color2 >> 8) & 0xFF;
+  uint8_t b2 = color2 & 0xFF;
+
+  uint8_t r_blend = ((r1 * intensity) + (r2 * (255 - intensity))) / 255;
+  uint8_t g_blend = ((g1 * intensity) + (g2 * (255 - intensity))) / 255;
+  uint8_t b_blend = ((b1 * intensity) + (b2 * (255 - intensity))) / 255;
+
+  return strip_bottom.Color(r_blend, g_blend, b_blend);
+}
+
+
+
 
 
 void meteorRain(byte red, byte green, byte blue, byte meteorSize, byte meteorTrailDecay, boolean meteorRandomDecay, int speedDelay, int loops) 
