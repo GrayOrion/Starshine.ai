@@ -63,7 +63,7 @@ const uint32_t colors[] = {
 const int numColors = sizeof(colors) / sizeof(colors[0]);
 
 // Define colors for rain - TODO: add these to the array above and change rain functions
-uint32_t targetColor = strip_bottom.Color(173, 216, 230); // Light blue
+uint32_t lightBlue = strip_bottom.Color(173, 216, 230); // Light blue
 uint32_t waveColor = strip_bottom.Color(0, 0, 255); // Full blue
 
 // Randomly selected starting points (where our 3 side strips reside)
@@ -93,7 +93,7 @@ void setup() {
   // END of Trinket-specific code.
 
   // Serial communication bit:
-  Serial.begin(115200);
+  Serial.begin(9600);//115200);
   while (!Serial){}
 
   // Initializing all of our strips:
@@ -197,15 +197,19 @@ void loop()
       {
         fire(parsedIntegers[0], parsedIntegers[1], parsedIntegers[2]);
       }
-      else if (strcmp(parsedString, "solid") == 0) 
+      else if (strcmp(parsedString, "flood") == 0) x
       {
         solid(strip_bottom.Color(parsedIntegers[0], parsedIntegers[1], parsedIntegers[2]), parsedIntegers[3], parsedIntegers[4]);
+      }
+      else if (strcmp(parsedString, "clouds") == 0)
+      {
+        thunderstorm(parsedIntegers[0], parsedIntegers[1]);
       }
       else if (strcmp(parsedString, "test") == 0) 
       {
         test(strip_bottom.Color(parsedIntegers[0], parsedIntegers[1], parsedIntegers[2]));
       }
-      else 
+      else
       {
         Serial.print("Unknown function name: ");
         Serial.println(parsedString);
@@ -257,9 +261,8 @@ void loop()
 
 void rain()
 {
-  uint32_t targetColor = strip_bottom.Color(173, 216, 230); // Light blue
-  gradualChangeToColor(targetColor, 5000); // Gradually change to light blue over 5 seconds
-  delay(1000); // Wait for a while before the next operation
+  gradualChangeToColor(lightBlue, 1000); // Gradually change to light blue over 5 seconds
+  delay(100); // Wait for a while before the next operation
 
   for (int i = 0; i < 6; i++)
   {
@@ -276,54 +279,51 @@ void createWaveEffect(int startPixel, int waveLength, int delayTime)
 {
     for (int step = 0; step < waveLength; step++)
     {
+        //int intensity = 255; // Full intensity by default
+
+        // // Reduce intensity for the last three steps
+        // if (step - i <= 2)
+        // {
+        //     intensity = 255 * (step - i + 1) / 3;
+        // }  TODO: add intentity after getting the wave going
+
         // Calculate and set colors for the wave effect
-        for (int i = 0; i <= step; i++)
+      
+        int leftPixel = (startPixel - step + LED_COUNT_bottom) % LED_COUNT_bottom;
+        int rightPixel = (startPixel + step) % LED_COUNT_bottom;
+
+        uint32_t currentColorLeft = waveColor; //blendColors(waveColor, lightBlue, intensity);
+        uint32_t currentColorRight = waveColor; //blendColors(waveColor, lightBlue, intensity);
+
+        strip_bottom.setPixelColor(leftPixel, currentColorLeft);
+        strip_bottom.setPixelColor(rightPixel, currentColorRight);
+        
+        uint32_t fadeColor = lightBlue; //blendColors(waveColor, lightBlue, 30);
+
+        if (step > 0)
         {
-            int intensity = 255; // Full intensity by default
+          leftPixel = (startPixel - step - 1 + LED_COUNT_bottom) % LED_COUNT_bottom;
+          rightPixel = (startPixel + step + 1) % LED_COUNT_bottom;
+          strip_bottom.setPixelColor(leftPixel, fadeColor);
+          strip_bottom.setPixelColor(rightPixel, fadeColor);
+        }
 
-            // Reduce intensity for the last three steps
-            if (step - i <= 2)
-            {
-                intensity = 255 * (step - i + 1) / 3;
-            }
+        if (step > 1)
+        {
+          leftPixel = (startPixel - step - 2 + LED_COUNT_bottom) % LED_COUNT_bottom;
+          rightPixel = (startPixel + step + 2) % LED_COUNT_bottom;
+          fadeColor = lightBlue; //blendColors(waveColor, lightBlue, 60);
+          strip_bottom.setPixelColor(leftPixel, fadeColor);
+          strip_bottom.setPixelColor(rightPixel, fadeColor);
+        }
 
-            int leftPixel = (startPixel - i + LED_COUNT_bottom) % LED_COUNT_bottom;
-            int rightPixel = (startPixel + i) % LED_COUNT_bottom;
-
-            uint32_t currentColorLeft = blendColors(waveColor, targetColor, intensity);
-            uint32_t currentColorRight = blendColors(waveColor, targetColor, intensity);
-
-            strip_bottom.setPixelColor(leftPixel, currentColorLeft);
-            strip_bottom.setPixelColor(rightPixel, currentColorRight);
-            
-            uint32_t fadeColor = blendColors(waveColor, targetColor, 30);
-
-            if (i > 0)
-            {
-              leftPixel = (startPixel - i - 1 + LED_COUNT_bottom) % LED_COUNT_bottom;
-              rightPixel = (startPixel + i + 1) % LED_COUNT_bottom;
-              fadeColor = blendColors(waveColor, targetColor, 30);
-              strip_bottom.setPixelColor(leftPixel, fadeColor);
-              strip_bottom.setPixelColor(rightPixel, fadeColor);
-            }
-
-            if (i > 1)
-            {
-              leftPixel = (startPixel - i - 2 + LED_COUNT_bottom) % LED_COUNT_bottom;
-              rightPixel = (startPixel + i + 2) % LED_COUNT_bottom;
-              fadeColor = blendColors(waveColor, targetColor, 60);
-              strip_bottom.setPixelColor(leftPixel, fadeColor);
-              strip_bottom.setPixelColor(rightPixel, fadeColor);
-            }
-
-            if (i > 2)
-            {
-              leftPixel = (startPixel - i - 3 + LED_COUNT_bottom) % LED_COUNT_bottom;
-              rightPixel = (startPixel + i + 3) % LED_COUNT_bottom;
-              fadeColor = targetColor;
-              strip_bottom.setPixelColor(leftPixel, fadeColor);
-              strip_bottom.setPixelColor(rightPixel, fadeColor);
-            }
+        if (step > 2)
+        {
+          leftPixel = (startPixel - step - 6 + LED_COUNT_bottom) % LED_COUNT_bottom;
+          rightPixel = (startPixel + step + 6) % LED_COUNT_bottom;
+          fadeColor = lightBlue;
+          strip_bottom.setPixelColor(leftPixel, fadeColor);
+          strip_bottom.setPixelColor(rightPixel, fadeColor);
         }
 
         strip_bottom.show();
@@ -331,7 +331,8 @@ void createWaveEffect(int startPixel, int waveLength, int delayTime)
     }
 }
 
-uint32_t blendColors(uint32_t color1, uint32_t color2, int intensity) {
+uint32_t blendColors(uint32_t color1, uint32_t color2, int intensity) 
+{
   // Blend color1 with color2 based on the intensity (0-255)
   uint8_t r1 = (color1 >> 16) & 0xFF;
   uint8_t g1 = (color1 >> 8) & 0xFF;
@@ -459,7 +460,143 @@ void fire(int duration, int intensity, int smokeLevel)
 {
   // find fireeffect https://www.tweaking4all.com/hardware/arduino/adruino-led-strip-effects/
   // thatre chase?
+  for (int i = 0; i < 1000; i++)
+  {
+    fireEffect(50); // Run the fire effect with a delay of 50ms between frames
+  }
+  
 }
+
+
+
+
+// Function to set a pixel color using hue, saturation, and brightness
+uint32_t ColorHSB(float hue, float sat, float brightness)
+{
+    hue = fmod(hue, 1.0f); // Wrap around if hue is greater than 1.0
+    hue *= 6.0;            // Hue sector 0 to 5
+    int i = floor(hue);    // Hue sector
+    float f = hue - i;     // Factorial part of hue
+    float p = brightness * (1.0 - sat);
+    float q = brightness * (1.0 - sat * f);
+    float t = brightness * (1.0 - sat * (1.0 - f));
+
+    float r, g, b;
+    switch (i)
+    {
+    case 0:
+        r = brightness;
+        g = t;
+        b = p;
+        break;
+    case 1:
+        r = q;
+        g = brightness;
+        b = p;
+        break;
+    case 2:
+        r = p;
+        g = brightness;
+        b = t;
+        break;
+    case 3:
+        r = p;
+        g = q;
+        b = brightness;
+        break;
+    case 4:
+        r = t;
+        g = p;
+        b = brightness;
+        break;
+    default: // case 5:
+        r = brightness;
+        g = p;
+        b = q;
+        break;
+    }
+
+    return strip_bottom.Color((uint8_t)(r * 255), (uint8_t)(g * 255), (uint8_t)(b * 255));
+}
+
+
+
+
+void fireEffect(int delayTime)
+{
+    static byte heat[LED_COUNT_bottom];
+
+    // Step 1. Cool down every cell a little
+    for (int i = 0; i < LED_COUNT_bottom; i++)
+    {
+        heat[i] = qsub8(heat[i], random(0, ((55 * 10) / LED_COUNT_bottom) + 2));
+    }
+
+    // Step 2. Heat from each cell drifts 'up' and diffuses a little
+    for (int i = LED_COUNT_bottom - 1; i >= 2; i--)
+    {
+        heat[i] = (heat[i - 1] + heat[i - 2] + heat[i - 2]) / 3;
+    }
+
+    // Step 3. Randomly ignite new 'sparks' near the bottom
+    if (random(255) < 120)
+    {
+        int y = random(7);
+        heat[y] = qadd8(heat[y], random(160, 255));
+    }
+
+    // Step 4. Convert heat to LED colors
+    for (int i = 0; i < LED_COUNT_bottom; i++)
+    {
+        strip_bottom.setPixelColor(i, HeatColor(heat[i]));
+    }
+
+    strip_bottom.show();
+    delay(delayTime);
+}
+
+uint32_t HeatColor(byte temperature)
+{
+    // Scale 'heat' down from 0-255 to 0-191
+    byte t192 = scale8_video(temperature, 191);
+
+    // Calculate ramp up from
+    byte heatramp = t192 & 0x3F; // 0..63
+    heatramp <<= 2; // scale up to 0..252
+
+    // Figure out which third of the spectrum we're in:
+    if (t192 & 0x80)
+    { // hottest
+        return strip_bottom.Color(255, 255, heatramp);
+    }
+    else if (t192 & 0x40)
+    { // middle
+        return strip_bottom.Color(255, heatramp, 0);
+    }
+    else
+    { // coolest
+        return strip_bottom.Color(heatramp, 0, 0);
+    }
+}
+
+// Utility function to subtract with saturation at 0
+byte qsub8(byte i, byte j)
+{
+    return (i > j) ? i - j : 0;
+}
+
+// Utility function to add with saturation at 255
+byte qadd8(byte i, byte j)
+{
+    return (i + j > 255) ? 255 : i + j;
+}
+
+// Utility function to scale down a byte by a percentage (0-255)
+byte scale8_video(byte i, byte scale)
+{
+    return ((uint16_t)i * (uint16_t)scale) >> 8;
+}
+
 
 
 
@@ -471,10 +608,141 @@ void fire(int duration, int intensity, int smokeLevel)
 / @param intensity - this parameter controls the intensity of the thunderstorm.
 /                   valid values are integers between 1 and 10 with 1 being the most intense and 10 being the mallowest
 **/
-void thunderstorm(int duration, int intensity)
+void thunderstorm(int duration, int smokeLevel)
 {
+  // fade to black
+  gradualChangeToColor(strip_bottom.Color(0,0,0), 1000);
+
+  // Start smoke
+  uint32_t smokeDelay = 4000;
+  uint32_t howLong = 6000;
   
+  if(smokeLevel > -1 && smokeLevel < 11)
+  {
+    smokeDelay = smokeDelay * (smokeLevel/10); 
+    Serial.print("smoke delay: ");
+    Serial.println(smokeDelay);
+  }
+  else
+    smokeDelay = smokeDelay / 2; // no value, give it halfpoint
+  
+  performEffect();
+
+  if (smokeDelay > 0 )
+  {
+    digitalWrite(SMOKE_PIN, HIGH);
+    // wait
+    delay(smokeDelay);
+  }
+  /// do some flashing 
+  performEffect();
+  // Stop smoke
+  digitalWrite(SMOKE_PIN, LOW);
+  // do some flashing
+  for (int i = 0;i < 10; i++)
+  {
+    performEffect();
+  }
 }
+
+
+void performEffect()
+{
+    // Pick a random strip as the main strip
+    int mainStripIndex = random(0, 3);
+    Adafruit_NeoPixel* mainStrip;
+    Adafruit_NeoPixel* stripA;
+    Adafruit_NeoPixel* stripB;
+    int bottom_pixel;
+    switch (mainStripIndex)
+    {
+        case 0:
+            mainStrip = &strip_0;
+            stripA = &strip_4;
+            stripB = &strip_8;
+            bottom_pixel = 0;     
+            break;
+        case 1:
+            mainStrip = &strip_4;
+            stripA = &strip_0;
+            stripB = &strip_8;
+            bottom_pixel = 19;
+            break;
+        case 2:
+            mainStrip = &strip_8;
+            stripA = &strip_0;
+            stripB = &strip_4;
+            bottom_pixel = 40;
+            break;
+    }
+    uint32_t color = mainStrip->Color(150, 150, 150, 0); // Full white
+
+    // blink top strip
+    strip_top.fill(color);
+    strip_top.show();
+    delay(100);
+    strip_top.clear();
+    strip_top.show();
+
+    // Light up the main strip from 0 to 7 pixels with accelerating speed
+    for (int i = LED_COUNT_sides - 1; i >= 0; i--)
+    {
+        mainStrip->setPixelColor(i, color);
+        mainStrip->show();
+        delay(100 - (i * 10)); // Accelerating delay
+    }
+
+    // Turn off the main strip after blinking
+    mainStrip->clear();
+    mainStrip->show();
+
+    // blink top strip
+    strip_bottom.setPixelColor(bottom_pixel, color);
+    strip_bottom.show();
+    delay(100);
+    strip_bottom.setPixelColor(bottom_pixel+1, color);
+    strip_bottom.setPixelColor((LED_COUNT_bottom+bottom_pixel-1)%LED_COUNT_bottom, color);
+    strip_bottom.show();
+    delay(100);
+    strip_bottom.clear();
+    strip_bottom.show();
+
+    // Blink stripA and stripB in sequence
+    blinkStrip(stripA);
+    delay(300); // Short delay between strips
+    blinkStrip(stripB);
+}
+
+void blinkStrip(Adafruit_NeoPixel* strip)
+{
+    uint32_t color = strip->Color(100, 100, 100, 0); // Full white
+    for (int i = 0; i < 2; i++)
+    {
+        strip->clear();
+        strip->show();
+        delay(100);
+        for (int j = 0; j < LED_COUNT_sides; j++)
+        {
+            strip->setPixelColor(j, color);
+        }
+        strip->show();
+        delay(100);
+    }
+    strip->clear();
+    strip->show();
+    delay(100);
+    for (int j = 0; j < LED_COUNT_sides; j++)
+    {
+        strip->setPixelColor(j, color);
+    }
+    strip->show();
+    delay(300); // Last 'on' delay is three times as long
+
+    // Turn off the strip after blinking
+    strip->clear();
+    strip->show();
+}
+
 
 
 
@@ -598,9 +866,12 @@ void solid(uint32_t color, int delayLevel, int smokeLevel)
     else
       smokeDelay = smokeDelay / 2; // no value, give it halfpoint
     
-    digitalWrite(SMOKE_PIN, HIGH);
-    delay(smokeDelay);
-    digitalWrite(SMOKE_PIN, LOW);
+    if (smokeDelay > 0 )
+    {
+      digitalWrite(SMOKE_PIN, HIGH);
+      delay(smokeDelay);
+      digitalWrite(SMOKE_PIN, LOW);
+    }
 
     //TODO: add some fading or blinking here...
     if(delayLevel > -1 && delayLevel < 11)
@@ -628,27 +899,48 @@ void solid(uint32_t color, int delayLevel, int smokeLevel)
 **/
 void test(uint32_t color)
 {
+    strip_bottom.clear();
+    strip_top.clear();
+    strip_0.clear();
+    strip_4.clear();
+    strip_8.clear();
+    strip_bottom.show();
+    strip_top.show();
+    strip_0.show();
+    strip_4.show();
+    strip_8.show();
+    delay(1000);
     strip_bottom.setPixelColor(0,color); 
     strip_top.setPixelColor(0,color); 
-    strip_0.setPixelColor(0,color); 
-    strip_4.setPixelColor(0,color); 
-    strip_8.setPixelColor(0,color); 
-
+    strip_0.fill(color);
+    strip_bottom.show();
     strip_top.show();
-    strip_bottom.show();                          //  Update strip to match
     strip_0.show();
-    delay(2000);
-    strip_4.show();
-    delay(2000);
-    strip_8.show();
-
-    digitalWrite(SMOKE_PIN, HIGH);
-    delay(3000);
-    digitalWrite(SMOKE_PIN, LOW);
-    
-
     delay(1000);
-    rainbowFade(5,10);
+    strip_bottom.setPixelColor(19,color); 
+    strip_top.setPixelColor(7,color); 
+    strip_4.fill(color);
+    strip_bottom.show();
+    strip_top.show();
+    strip_4.show();
+    delay(1000);
+    strip_bottom.setPixelColor(39,color); 
+    strip_top.setPixelColor(15,color); 
+    strip_8.fill(color);
+    strip_bottom.show();
+    strip_top.show();
+    strip_8.show();
+    delay(1000);
+    strip_bottom.fill(color); 
+    strip_top.fill(color); 
+    strip_bottom.show();
+    strip_top.show();
+    // digitalWrite(SMOKE_PIN, HIGH);
+    // delay(3000);
+    // digitalWrite(SMOKE_PIN, LOW);
+    
+    delay(5000);
+    //rainbowFade(5,10);
 }
 
 
