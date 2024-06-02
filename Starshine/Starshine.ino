@@ -324,6 +324,8 @@ void loop()
 //////////////////////////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////// Sparkle everything /////////////////////////////////////////////
 
+// Call with Sparkle(0xff, 0xff, 0xff, 0);
+// This might be the best function to run as in between calls, but might needto add a before dimming
 
 void Sparkle(byte red, byte green, byte blue, int SpeedDelay) {
   int Pixel = random(NUM_LEDS);
@@ -377,7 +379,7 @@ void runSnake(int snakeLength, int delayTime)
             for (int j = segment.startPixel; j != segment.endPixel + step; j += step) // go through the pixels in the segment
             {
                 // Set the color of the head
-                setPixelColor(segment, j, currentColor);
+                setPixelColorOnMultiSegmentPath(segment, j, currentColor);
 
                 // Fade the tail
                 for (int k = 1; k <= tailLength; k++)
@@ -386,17 +388,17 @@ void runSnake(int snakeLength, int delayTime)
                     if (tailPos >= 0 && tailPos < LED_COUNT_bottom && segment.strip == &strip_bottom)
                     {
                         uint32_t fadedColor = blendColors(currentColor, strip_bottom.Color(0, 0, 0, 0), k * 100 / tailLength);
-                        setPixelColor(segment, tailPos, fadedColor);
+                        setPixelColorOnMultiSegmentPath(segment, tailPos, fadedColor);
                     }
                     else if (tailPos >= 0 && tailPos < LED_COUNT_top && segment.strip == &strip_top)
                     {
                         uint32_t fadedColor = blendColors(currentColor, strip_top.Color(0, 0, 0, 0), k * 100 / tailLength);
-                        setPixelColor(segment, tailPos, fadedColor);
+                        setPixelColorOnMultiSegmentPath(segment, tailPos, fadedColor);
                     }
                     else if (tailPos >= 0 && tailPos < LED_COUNT_sides && (segment.strip == &strip_0 || segment.strip == &strip_4 || segment.strip == &strip_8))
                     {
                         uint32_t fadedColor = blendColors(currentColor, strip_0.Color(0, 0, 0, 0), k * 100 / tailLength);
-                        setPixelColor(segment, tailPos, fadedColor);
+                        setPixelColorOnMultiSegmentPath(segment, tailPos, fadedColor);
                     }
                 }
 
@@ -408,15 +410,15 @@ void runSnake(int snakeLength, int delayTime)
                 int clearPos = j - (snakeLength * step);
                 if (clearPos >= 0 && clearPos < LED_COUNT_bottom && segment.strip == &strip_bottom)
                 {
-                    setPixelColor(segment, clearPos, strip_bottom.Color(0, 0, 0, 0));
+                    setPixelColorOnMultiSegmentPath(segment, clearPos, strip_bottom.Color(0, 0, 0, 0));
                 }
                 else if (clearPos >= 0 && clearPos < LED_COUNT_top && segment.strip == &strip_top)
                 {
-                    setPixelColor(segment, clearPos, strip_top.Color(0, 0, 0, 0));
+                    setPixelColorOnMultiSegmentPath(segment, clearPos, strip_top.Color(0, 0, 0, 0));
                 }
                 else if (clearPos >= 0 && clearPos < LED_COUNT_sides && (segment.strip == &strip_0 || segment.strip == &strip_4 || segment.strip == &strip_8))
                 {
-                    setPixelColor(segment, clearPos, strip_0.Color(0, 0, 0, 0));
+                    setPixelColorOnMultiSegmentPath(segment, clearPos, strip_0.Color(0, 0, 0, 0));
                 }
             }
         }
@@ -434,7 +436,7 @@ void runSnake(int snakeLength, int delayTime)
 / It figures wich strip the segment belongs to and does all the work.
 /
 **/
-void setPixelColor(PathSegment segment, int pixelIndex, uint32_t color)
+void setPixelColorOnMultiSegmentPath(PathSegment segment, int pixelIndex, uint32_t color)
 {
     if (segment.strip == &strip_bottom && pixelIndex >= 0 && pixelIndex < LED_COUNT_bottom)
     {
