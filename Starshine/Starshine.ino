@@ -66,10 +66,73 @@ const int numColors = sizeof(colors) / sizeof(colors[0]);
 uint32_t lightBlue = strip_bottom.Color(173, 216, 230); // Light blue
 uint32_t waveColor = strip_bottom.Color(0, 0, 255); // Full blue
 
-// Randomly selected starting points (where our 3 side strips reside)
+// Randomly selected starting points (where our 3 side strips reside) - currently used for thruderstrom
 const int startPoints[3] = {0, 19, 39};
 
 
+/// Definitions and Variables/constants for the snake ///////////
+/// Path going around and up and down through the side strips ///
+/////////////////////////////////////////////////////////////////
+
+// Define the path as a sequence of strips and pixel ranges
+struct PathSegment
+{
+    Adafruit_NeoPixel *strip;
+    int startPixel;
+    int endPixel;
+};
+
+PathSegment path[] =
+{
+    {&strip_bottom, 0, 19},
+    {&strip_4, 0, 7},
+    {&strip_top, 15, 7},
+    {&strip_8, 7, 0},
+    {&strip_bottom, 39, 59},
+    {&strip_0, 0, 7},
+    {&strip_top, 23, 15},
+    {&strip_4, 7, 0},
+    {&strip_bottom, 19, 39},
+    {&strip_8, 0, 7},
+    {&strip_top, 7, 0},
+    {&strip_0, 7, 0}
+};
+
+
+// Length of the path in terms of segments
+const int PATH_LENGTH = sizeof(path) / sizeof(path[0]);
+
+// Tail fade length
+int tailLength = 5;
+
+
+/////////////////////// Variables for including all strips as one ////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////////////////////////
+
+#define NUM_STRIPS 5
+#define NUM_LEDS (LED_COUNT_bottom + LED_COUNT_top + 3 * LED_COUNT_sides)
+
+// Array to hold all the strips
+Adafruit_NeoPixel* strips[NUM_STRIPS] = { &strip_bottom, &strip_top, &strip_0, &strip_4, &strip_8 };
+
+// Array to hold the count of LEDs in each strip
+int ledCounts[NUM_STRIPS] = { LED_COUNT_bottom, LED_COUNT_top, LED_COUNT_sides, LED_COUNT_sides, LED_COUNT_sides };
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+///////////////////// Variables for Serial Communication /////////////////////
+//////////////////////////////////////////////////////////////////////////////
 
 // Define a buffer size large enough to hold your input string
 const int bufferSize = 100;
@@ -79,12 +142,14 @@ char inputString[bufferSize];
 char parsedString[50]; // Assuming max length of string part is 50
 int parsedIntegers[5] = {0}; // Initialize with zeros
 
-
+///////////////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////////////
 //////////////////// Setup ////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////////////
 
-void setup() {
+void setup() 
+{
   // These lines are specifically to support the Adafruit Trinket 5V 16 MHz.
   // Any other board, you can remove this part (but no harm leaving it):
 #if defined(__AVR_ATtiny85__) && (F_CPU == 16000000)
@@ -150,6 +215,26 @@ void setup() {
 // strip.fill(rgbcolor);
 
 
+/////////////////////////////////////////////////////////////////////////////////
+////////////////////////// For ChatGPT //////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////////////////
+
+/**
+I have 5 neopixel strips, 
+All strips are rgbw neopixel strips
+a 60 pixel strip called strip_bottom with LED_COUNT_bottom as the variable for the number of neopixels
+a 24 pixel strip called strip_top with LED_COUNT_top as the variable for the number of neopixels
+and three 8 pixel strips called strip_0, strip_4, and strip_8 with LED_COUNT_sides as the variable for the number of neopixels
+
+Please write a function for my arduino that runs a color changing 5 pixel snake with a fading tail that follow this path:
+From pixel 0 to pixel 19 of strip_bottom, from pixel 0 to pixel 7 of strip_4, then from pixel 15 to pixel 7 of strip_top, then from pixel 7 to pixel 0 of strip_8, then from pixel 39 to pixel 59 of strip_bottom, 
+then from  to pixel 0 to pixel 7 of strip_0, from pixel 23 to pixel 15 of strip_top, then from pixel 7 to pixel 0 of strip_4, from pixel 19 to pixel 39 of strip_bottom, from pixel 0 to pixel 7 of strip_8, from pixel 7 to pixel 0 of strip_top, from pixel 7 to pixel 0 of strip_0 
+
+The length of the tail fade should be controlled with a variable
+
+**/
+
+
 ////////////////////////////////////////////////////////////////////////////////////////////////
 /////////////////////// Main Loop //////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////////
@@ -197,7 +282,7 @@ void loop()
       {
         fire(parsedIntegers[0], parsedIntegers[1], parsedIntegers[2]);
       }
-      else if (strcmp(parsedString, "flood") == 0) x
+      else if (strcmp(parsedString, "flood") == 0)
       {
         solid(strip_bottom.Color(parsedIntegers[0], parsedIntegers[1], parsedIntegers[2]), parsedIntegers[3], parsedIntegers[4]);
       }
@@ -236,7 +321,150 @@ void loop()
 
 /// Look at: sparkle, Running lights, 
 
+//////////////////////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////// Sparkle everything /////////////////////////////////////////////
+
+
+void Sparkle(byte red, byte green, byte blue, int SpeedDelay) {
+  int Pixel = random(NUM_LEDS);
+  setPixel(Pixel, red, green, blue);
+  showStrip();
+  delay(SpeedDelay);
+  setPixel(Pixel, 0, 0, 0);
+}
+
+
+void setPixel(int Pixel, byte red, byte green, byte blue) {
+  int stripIndex = 0;
+  int pixelIndex = Pixel;
+
+  // Find which strip the pixel belongs to
+  while (pixelIndex >= ledCounts[stripIndex]) {
+    pixelIndex -= ledCounts[stripIndex];
+    stripIndex++;
+  }
+
+  // Set the pixel color in the correct strip
+  strips[stripIndex]->setPixelColor(pixelIndex, strips[stripIndex]->Color(red, green, blue, 0));
+}
+
+
+void showStrip() {
+  for (int i = 0; i < NUM_STRIPS; i++) {
+    strips[i]->show();
+  }
+}
+
+
+/////////////////////////////////////////////////////////////////////////////////////////////
+/////////////////////////////////// Snake ///////////////////////////////////////////////////
+void runSnake(int snakeLength, int delayTime)
+{
+    uint32_t currentColor = strip_bottom.Color(255, 0, 0, 0); // Start with red
+    uint32_t nextColor = strip_bottom.Color(0, 0, 255, 0); // Change to blue
+
+    int currentPathPosition = 0;
+    while (true)
+    {
+        // Calculate the blend between the current and next color
+        currentColor = blendColors(currentColor, nextColor, 5); // Change gradually
+
+        // Move the snake along the path
+        for (int i = 0; i < PATH_LENGTH; i++)
+        {
+            PathSegment segment = path[i]; // grab next segment
+            int step = (segment.startPixel < segment.endPixel) ? 1 : -1;
+            for (int j = segment.startPixel; j != segment.endPixel + step; j += step) // go through the pixels in the segment
+            {
+                // Set the color of the head
+                setPixelColor(segment, j, currentColor);
+
+                // Fade the tail
+                for (int k = 1; k <= tailLength; k++)
+                {
+                    int tailPos = j - (k * step);
+                    if (tailPos >= 0 && tailPos < LED_COUNT_bottom && segment.strip == &strip_bottom)
+                    {
+                        uint32_t fadedColor = blendColors(currentColor, strip_bottom.Color(0, 0, 0, 0), k * 100 / tailLength);
+                        setPixelColor(segment, tailPos, fadedColor);
+                    }
+                    else if (tailPos >= 0 && tailPos < LED_COUNT_top && segment.strip == &strip_top)
+                    {
+                        uint32_t fadedColor = blendColors(currentColor, strip_top.Color(0, 0, 0, 0), k * 100 / tailLength);
+                        setPixelColor(segment, tailPos, fadedColor);
+                    }
+                    else if (tailPos >= 0 && tailPos < LED_COUNT_sides && (segment.strip == &strip_0 || segment.strip == &strip_4 || segment.strip == &strip_8))
+                    {
+                        uint32_t fadedColor = blendColors(currentColor, strip_0.Color(0, 0, 0, 0), k * 100 / tailLength);
+                        setPixelColor(segment, tailPos, fadedColor);
+                    }
+                }
+
+                // Show the updates
+                segment.strip->show();
+                delay(delayTime);
+
+                // Clear the pixel behind the tail
+                int clearPos = j - (snakeLength * step);
+                if (clearPos >= 0 && clearPos < LED_COUNT_bottom && segment.strip == &strip_bottom)
+                {
+                    setPixelColor(segment, clearPos, strip_bottom.Color(0, 0, 0, 0));
+                }
+                else if (clearPos >= 0 && clearPos < LED_COUNT_top && segment.strip == &strip_top)
+                {
+                    setPixelColor(segment, clearPos, strip_top.Color(0, 0, 0, 0));
+                }
+                else if (clearPos >= 0 && clearPos < LED_COUNT_sides && (segment.strip == &strip_0 || segment.strip == &strip_4 || segment.strip == &strip_8))
+                {
+                    setPixelColor(segment, clearPos, strip_0.Color(0, 0, 0, 0));
+                }
+            }
+        }
+
+        // Switch to the next color
+        uint32_t tempColor = currentColor;
+        currentColor = nextColor;
+        nextColor = tempColor;
+    }
+}
+
+
+/**
+/ This method changes the color of a pixel in a given segment.
+/ It figures wich strip the segment belongs to and does all the work.
+/
+**/
+void setPixelColor(PathSegment segment, int pixelIndex, uint32_t color)
+{
+    if (segment.strip == &strip_bottom && pixelIndex >= 0 && pixelIndex < LED_COUNT_bottom)
+    {
+        strip_bottom.setPixelColor(pixelIndex, color);
+    }
+    else if (segment.strip == &strip_top && pixelIndex >= 0 && pixelIndex < LED_COUNT_top)
+    {
+        strip_top.setPixelColor(pixelIndex, color);
+    }
+    else if (segment.strip == &strip_0 && pixelIndex >= 0 && pixelIndex < LED_COUNT_sides)
+    {
+        strip_0.setPixelColor(pixelIndex, color);
+    }
+    else if (segment.strip == &strip_4 && pixelIndex >= 0 && pixelIndex < LED_COUNT_sides)
+    {
+        strip_4.setPixelColor(pixelIndex, color);
+    }
+    else if (segment.strip == &strip_8 && pixelIndex >= 0 && pixelIndex < LED_COUNT_sides)
+    {
+        strip_8.setPixelColor(pixelIndex, color);
+    }
+}
+
+
+
+
+///////////////////////////
 ///////// Rain ////////////
+///////////////////////////
+
 /**
 / This function is meant to mimic raindrops coming down around our crystal
 / @param duration - this parameter controls the duration of the rain.
@@ -331,23 +559,7 @@ void createWaveEffect(int startPixel, int waveLength, int delayTime)
     }
 }
 
-uint32_t blendColors(uint32_t color1, uint32_t color2, int intensity) 
-{
-  // Blend color1 with color2 based on the intensity (0-255)
-  uint8_t r1 = (color1 >> 16) & 0xFF;
-  uint8_t g1 = (color1 >> 8) & 0xFF;
-  uint8_t b1 = color1 & 0xFF;
-  
-  uint8_t r2 = (color2 >> 16) & 0xFF;
-  uint8_t g2 = (color2 >> 8) & 0xFF;
-  uint8_t b2 = color2 & 0xFF;
 
-  uint8_t r_blend = ((r1 * intensity) + (r2 * (255 - intensity))) / 255;
-  uint8_t g_blend = ((g1 * intensity) + (g2 * (255 - intensity))) / 255;
-  uint8_t b_blend = ((b1 * intensity) + (b2 * (255 - intensity))) / 255;
-
-  return strip_bottom.Color(r_blend, g_blend, b_blend);
-}
 
 
 
@@ -944,12 +1156,9 @@ void test(uint32_t color)
 }
 
 
-
 /////////////////////////////////////////////////////////////////////
 ////////////////// Other light functions ////////////////////////////
 /////////////////////////////////////////////////////////////////////
-
-
 
 
 /**
@@ -1077,10 +1286,45 @@ void fadePixelsToColor(int pixel1, int pixel2, uint32_t targetColor, int steps)
   }
 }
 
+// // Blend colors for rgb
+// uint32_t blendColors(uint32_t color1, uint32_t color2, int intensity) 
+// {
+//   // Blend color1 with color2 based on the intensity (0-255)
+//   uint8_t r1 = (color1 >> 16) & 0xFF;
+//   uint8_t g1 = (color1 >> 8) & 0xFF;
+//   uint8_t b1 = color1 & 0xFF;
+  
+//   uint8_t r2 = (color2 >> 16) & 0xFF;
+//   uint8_t g2 = (color2 >> 8) & 0xFF;
+//   uint8_t b2 = color2 & 0xFF;
 
+//   uint8_t r_blend = ((r1 * intensity) + (r2 * (255 - intensity))) / 255;
+//   uint8_t g_blend = ((g1 * intensity) + (g2 * (255 - intensity))) / 255;
+//   uint8_t b_blend = ((b1 * intensity) + (b2 * (255 - intensity))) / 255;
 
+//   return strip_bottom.Color(r_blend, g_blend, b_blend);
+// }
 
+// blend colors for rgbw
+uint32_t blendColors(uint32_t color1, uint32_t color2, int percentage)
+{
+    uint8_t r1 = (color1 >> 24) & 0xFF;
+    uint8_t g1 = (color1 >> 16) & 0xFF;
+    uint8_t b1 = (color1 >> 8) & 0xFF;
+    uint8_t w1 = color1 & 0xFF;
 
+    uint8_t r2 = (color2 >> 24) & 0xFF;
+    uint8_t g2 = (color2 >> 16) & 0xFF;
+    uint8_t b2 = (color2 >> 8) & 0xFF;
+    uint8_t w2 = color2 & 0xFF;
+
+    uint8_t r_blend = ((r1 * (100 - percentage)) + (r2 * percentage)) / 100;
+    uint8_t g_blend = ((g1 * (100 - percentage)) + (g2 * percentage)) / 100;
+    uint8_t b_blend = ((b1 * (100 - percentage)) + (b2 * percentage)) / 100;
+    uint8_t w_blend = ((w1 * (100 - percentage)) + (w2 * percentage)) / 100;
+
+    return (r_blend << 24) | (g_blend << 16) | (b_blend << 8) | w_blend;
+}
 
 
 
