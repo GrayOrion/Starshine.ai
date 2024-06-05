@@ -123,7 +123,17 @@ Adafruit_NeoPixel* strips[NUM_STRIPS] = { &strip_bottom, &strip_top, &strip_0, &
 // Array to hold the count of LEDs in each strip
 int ledCounts[NUM_STRIPS] = { LED_COUNT_bottom, LED_COUNT_top, LED_COUNT_sides, LED_COUNT_sides, LED_COUNT_sides };
 
+///////////////// Variables for fire effect ///////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////
 
+// Heat arrays for each strip 
+byte heat_bottom[LED_COUNT_bottom];
+byte heat_top[LED_COUNT_top];
+byte heat_0[LED_COUNT_sides];
+byte heat_4[LED_COUNT_sides];
+byte heat_8[LED_COUNT_sides];
+
+byte* heats[NUM_STRIPS] = { heat_bottom, heat_top, heat_0, heat_4, heat_8 };
 
 
 
@@ -218,9 +228,15 @@ void setup()
 /**
 I have 5 neopixel strips, 
 All strips are rgbw neopixel strips
-a 60 pixel strip called strip_bottom with LED_COUNT_bottom as the variable for the number of neopixels
-a 24 pixel strip called strip_top with LED_COUNT_top as the variable for the number of neopixels
-and three 8 pixel strips called strip_0, strip_4, and strip_8 with LED_COUNT_sides as the variable for the number of neopixels
+a 60 pixel strip called strip_bottom with LED_COUNT_bottom as the variable for the number of neopixels and LED_PIN_bottom noting its pin
+a 24 pixel strip called strip_top with LED_COUNT_top as the variable for the number of neopixels and LED_PIN_top noting its pin
+and three 8 pixel strips called strip_0, strip_4, and strip_8 with LED_COUNT_sides as the variable for the number of neopixels and LED_PIN_0, LED_PIN_4, and LED_PIN_8 noting their pins respectively 
+
+LED_PIN_bottom     7
+#define LED_PIN_top   6     
+#define LED_PIN_0  5
+#define LED_PIN_4 3
+#define LED_PIN_8 9
 
 Please write a function for my arduino that runs a color changing 5 pixel snake with a fading tail that follow this path:
 From pixel 0 to pixel 19 of strip_bottom, from pixel 0 to pixel 7 of strip_4, then from pixel 15 to pixel 7 of strip_top, then from pixel 7 to pixel 0 of strip_8, then from pixel 39 to pixel 59 of strip_bottom, 
@@ -313,7 +329,7 @@ boolean runSequenceFromSerialInput()
     {
       fire(parsedIntegers[0], parsedIntegers[1], parsedIntegers[2]);
     }
-    else if (parsedString[0] == 'd') // strcmp(parsedString, "flood") == 0) //
+    else if (strcmp(parsedString, "flood") == 0) // (parsedString[0] == 'd') //
     {
       solid(strip_bottom.Color(parsedIntegers[0], parsedIntegers[1], parsedIntegers[2]), parsedIntegers[3], parsedIntegers[4]);
     }
@@ -1083,147 +1099,178 @@ void createMediumRipple(int rippleLength, int startPixel, int intensity)   // 1 
 **/
 void fire(int duration, int intensity, int smokeLevel)
 {
-  // find fireeffect https://www.tweaking4all.com/hardware/arduino/adruino-led-strip-effects/
-  // thatre chase?
-  for (int i = 0; i < 1000; i++)
+  gradualChangeToColor(strip_bottom.Color(0,0,0), 1000);
+
+  // Smoke delay base
+  uint32_t smokeDelay = 5000;
+  // duration base
+  int rounds = 800; 
+  // delay base (for intensity)
+  int intensityDelay = 30;
+
+  if(smokeLevel > -1 && smokeLevel < 11)
   {
-    fireEffect(50); // Run the fire effect with a delay of 50ms between frames
+    smokeDelay = smokeDelay * (smokeLevel/10); 
+    Serial.print("smoke delay: ");
+    Serial.println(smokeDelay);
   }
+  else
+    smokeDelay = smokeDelay / 2; // no value, give it halfpoint
   
+  if(duration > 0 && duration < 11)
+  {
+    rounds = rounds * (duration/10); 
+    Serial.print("Rounds: ");
+    Serial.println(rounds);
+  }
+  else
+    rounds = rounds / 2; // no value, give it halfpoint
+  
+  if(intensity > -1 && intensity < 11)
+  {
+    intensityDelay = intensityDelay * (intensity/10); 
+    Serial.print("Intensity delay: ");
+    Serial.println(intensityDelay);
+  }
+  else
+    intensityDelay = intensityDelay / 2; // no value, give it halfpoint
+
+  // always blow at least some smoke here
+  digitalWrite(SMOKE_PIN, HIGH);
+  delay(1000);
+  // Stop smoke
+  digitalWrite(SMOKE_PIN, LOW);
+
+  if (smokeDelay > 0 )
+  {
+    digitalWrite(SMOKE_PIN, HIGH);
+    // wait
+    delay(smokeDelay);
+  }
+  // Stop smoke
+  digitalWrite(SMOKE_PIN, LOW);
+  // do some flashing
+  for (int i = 0;i < rounds; i++)
+  {
+    fireEffect(intensityDelay); // Run the fire effect with a delay between frames
+  }
 }
 
 
+void fireEffect(int delayTime) {
+  for (int s = 0; s < NUM_STRIPS; s++) {
+    applyFireEffectToStrip(strips[s], heats[s], ledCounts[s]);
+  }
 
+  for (int s = 0; s < NUM_STRIPS; s++) {
+    strips[s]->show();
+  }
+
+  delay(delayTime);
+}
+
+void applyFireEffectToStrip(Adafruit_NeoPixel* strip, byte* heat, int ledCount) {
+  // Step 1. Cool down every cell a little
+  for (int i = 0; i < ledCount; i++) {
+    heat[i] = qsub8(heat[i], random(0, ((55 * 10) / ledCount) + 2));
+  }
+
+  // Step 2. Heat from each cell drifts 'up' and diffuses a little
+  for (int i = ledCount - 1; i >= 2; i--) {
+    heat[i] = (heat[i - 1] + heat[i - 2] + heat[i - 2]) / 3;
+  }
+
+  // Step 3. Randomly ignite new 'sparks' near the bottom
+  if (random(255) < 120) {
+    int y = random(7);
+    heat[y] = qadd8(heat[y], random(160, 255));
+  }
+
+  // Step 4. Convert heat to LED colors
+  for (int i = 0; i < ledCount; i++) {
+    strip->setPixelColor(i, HeatColor(heat[i]));
+  }
+}
 
 // Function to set a pixel color using hue, saturation, and brightness
-uint32_t ColorHSB(float hue, float sat, float brightness)
-{
-    hue = fmod(hue, 1.0f); // Wrap around if hue is greater than 1.0
-    hue *= 6.0;            // Hue sector 0 to 5
-    int i = floor(hue);    // Hue sector
-    float f = hue - i;     // Factorial part of hue
-    float p = brightness * (1.0 - sat);
-    float q = brightness * (1.0 - sat * f);
-    float t = brightness * (1.0 - sat * (1.0 - f));
+uint32_t ColorHSB(float hue, float sat, float brightness) {
+  hue = fmod(hue, 1.0f); // Wrap around if hue is greater than 1.0
+  hue *= 6.0;            // Hue sector 0 to 5
+  int i = floor(hue);    // Hue sector
+  float f = hue - i;     // Factorial part of hue
+  float p = brightness * (1.0 - sat);
+  float q = brightness * (1.0 - sat * f);
+  float t = brightness * (1.0 - sat * (1.0 - f));
 
-    float r, g, b;
-    switch (i)
-    {
+  float r, g, b;
+  switch (i) {
     case 0:
-        r = brightness;
-        g = t;
-        b = p;
-        break;
+      r = brightness;
+      g = t;
+      b = p;
+      break;
     case 1:
-        r = q;
-        g = brightness;
-        b = p;
-        break;
+      r = q;
+      g = brightness;
+      b = p;
+      break;
     case 2:
-        r = p;
-        g = brightness;
-        b = t;
-        break;
+      r = p;
+      g = brightness;
+      b = t;
+      break;
     case 3:
-        r = p;
-        g = q;
-        b = brightness;
-        break;
+      r = p;
+      g = q;
+      b = brightness;
+      break;
     case 4:
-        r = t;
-        g = p;
-        b = brightness;
-        break;
+      r = t;
+      g = p;
+      b = brightness;
+      break;
     default: // case 5:
-        r = brightness;
-        g = p;
-        b = q;
-        break;
-    }
+      r = brightness;
+      g = p;
+      b = q;
+      break;
+  }
 
-    return strip_bottom.Color((uint8_t)(r * 255), (uint8_t)(g * 255), (uint8_t)(b * 255));
+  return Adafruit_NeoPixel::Color((uint8_t)(r * 255), (uint8_t)(g * 255), (uint8_t)(b * 255));
 }
 
+uint32_t HeatColor(byte temperature) {
+  // Scale 'heat' down from 0-255 to 0-191
+  byte t192 = scale8_video(temperature, 191);
 
+  // Calculate ramp up from
+  byte heatramp = t192 & 0x3F; // 0..63
+  heatramp <<= 2; // scale up to 0..252
 
-
-void fireEffect(int delayTime)
-{
-    static byte heat[LED_COUNT_bottom];
-
-    // Step 1. Cool down every cell a little
-    for (int i = 0; i < LED_COUNT_bottom; i++)
-    {
-        heat[i] = qsub8(heat[i], random(0, ((55 * 10) / LED_COUNT_bottom) + 2));
-    }
-
-    // Step 2. Heat from each cell drifts 'up' and diffuses a little
-    for (int i = LED_COUNT_bottom - 1; i >= 2; i--)
-    {
-        heat[i] = (heat[i - 1] + heat[i - 2] + heat[i - 2]) / 3;
-    }
-
-    // Step 3. Randomly ignite new 'sparks' near the bottom
-    if (random(255) < 120)
-    {
-        int y = random(7);
-        heat[y] = qadd8(heat[y], random(160, 255));
-    }
-
-    // Step 4. Convert heat to LED colors
-    for (int i = 0; i < LED_COUNT_bottom; i++)
-    {
-        strip_bottom.setPixelColor(i, HeatColor(heat[i]));
-    }
-
-    strip_bottom.show();
-    delay(delayTime);
-}
-
-uint32_t HeatColor(byte temperature)
-{
-    // Scale 'heat' down from 0-255 to 0-191
-    byte t192 = scale8_video(temperature, 191);
-
-    // Calculate ramp up from
-    byte heatramp = t192 & 0x3F; // 0..63
-    heatramp <<= 2; // scale up to 0..252
-
-    // Figure out which third of the spectrum we're in:
-    if (t192 & 0x80)
-    { // hottest
-        return strip_bottom.Color(255, 255, heatramp);
-    }
-    else if (t192 & 0x40)
-    { // middle
-        return strip_bottom.Color(255, heatramp, 0);
-    }
-    else
-    { // coolest
-        return strip_bottom.Color(heatramp, 0, 0);
-    }
+  // Figure out which third of the spectrum we're in:
+  if (t192 & 0x80) { // hottest
+    return Adafruit_NeoPixel::Color(255, 255, heatramp / 2); // Reduce brightness
+  } else if (t192 & 0x40) { // middle
+    return Adafruit_NeoPixel::Color(255, heatramp / 2, 0); // Reduce brightness
+  } else { // coolest
+    return Adafruit_NeoPixel::Color(heatramp / 2, 0, 0); // Reduce brightness
+  }
 }
 
 // Utility function to subtract with saturation at 0
-byte qsub8(byte i, byte j)
-{
-    return (i > j) ? i - j : 0;
+byte qsub8(byte i, byte j) {
+  return (i > j) ? i - j : 0;
 }
 
 // Utility function to add with saturation at 255
-byte qadd8(byte i, byte j)
-{
-    return (i + j > 255) ? 255 : i + j;
+byte qadd8(byte i, byte j) {
+  return (i + j > 255) ? 255 : i + j;
 }
 
 // Utility function to scale down a byte by a percentage (0-255)
-byte scale8_video(byte i, byte scale)
-{
-    return ((uint16_t)i * (uint16_t)scale) >> 8;
+byte scale8_video(byte i, byte scale) {
+  return ((uint16_t)i * (uint16_t)scale) >> 8;
 }
-
-
-
 
 ///////// Clouds //////////
 /**
