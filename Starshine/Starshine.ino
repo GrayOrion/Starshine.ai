@@ -182,7 +182,7 @@ void setup()
 
 
 //////////////////////////////////////////////////////////////////////////////////////////////
-////////////////////////////// Neopixel Strip Info ///////////////////////////////////////////
+////////////////////////////// Neopixel Strip HowTo //////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////////////////////
 
 // strip.setPixelColor(n, red, green, blue, white);  // set single pixel pattern rgb values
@@ -281,7 +281,6 @@ boolean runSequenceFromSerialInput()
   for (int i = 0; i < 5; ++i) 
   {
     parsedIntegers[i] = 0;
-
   }
   
   if (parseInput(inputString, parsedString, parsedIntegers)) 
@@ -296,29 +295,29 @@ boolean runSequenceFromSerialInput()
     // }
     // Serial.println();
 
-    if (strcmp(parsedString, "rainbow") == 0) 
+    if (strcmp(parsedString, "rainbow") == 0) //parsedString[0] == 'r' 
     {// 5, 30, 0
       rainbowFade(parsedIntegers[0], parsedIntegers[1]);
     } 
     else if (strcmp(parsedString, "rain") == 0) 
     {
-      rain(parsedIntegers[0], parsedIntegers[1]);
+      rain(parsedIntegers[0], parsedIntegers[1]); //parsedString[0] == 'n'
       //meteorRain(200,200,255,3, 32, true, 30,10);
       //colorWipTopAndBottom(parsedIntegers[0], parsedIntegers[1]);
     }
-    else if (strcmp(parsedString, "fire") == 0) 
+    else if (strcmp(parsedString, "fire") == 0) //parsedString[0] == 'f'
     {
       fire(parsedIntegers[0], parsedIntegers[1], parsedIntegers[2]);
     }
-    else if (strcmp(parsedString, "flood") == 0)
+    else if (strcmp(parsedString, "flood") == 0) //parsedString[0] == 'd'
     {
       solid(strip_bottom.Color(parsedIntegers[0], parsedIntegers[1], parsedIntegers[2]), parsedIntegers[3], parsedIntegers[4]);
     }
-    else if (strcmp(parsedString, "clouds") == 0)
+    else if (strcmp(parsedString, "clouds") == 0 || strcmp(parsedString, "thunderstorm") == 0) //parsedString[0] == 'c'
     {
       thunderstorm(parsedIntegers[0], parsedIntegers[1]);
     }
-    else if (strcmp(parsedString, "test") == 0) 
+    else if (strcmp(parsedString, "test") == 0)  //parsedString[0] == 't'
     {
       test(strip_bottom.Color(parsedIntegers[0], parsedIntegers[1], parsedIntegers[2]));
     }
@@ -345,16 +344,14 @@ boolean runSequenceFromSerialInput()
 }
 
 
-
-
 /////////////////////////////////////////////////////////////////////////////////////////////
 //////////////////////// High Level Light Functions /////////////////////////////////////////
 /////////////////////////////////////////////////////////////////////////////////////////////
 
 
-//////////////////////////
-/// Sparkle everything ///
-//////////////////////////
+//////////////////////////////
+/// Sparkle everything :-) ///
+//////////////////////////////
 
 
 // Call with Sparkle(0xff, 0xff, 0xff, 0);
@@ -398,147 +395,6 @@ void showStrip() {
 }
 
 
-////////////////////////////
-///////// Snake ////////////
-////////////////////////////
-
-
-void runSnake(int snakeLength, int delayTime)
-{
-    uint32_t currentColor = strip_bottom.Color(255, 0, 0, 0); // Start with red
-    uint32_t nextColor = strip_bottom.Color(0, 0, 255, 0); // Change to blue
-
-    int currentPathPosition = 0;
-    while (true)
-    {
-        // Calculate the blend between the current and next color
-        currentColor = blendColors(currentColor, nextColor, 5); // Change gradually
-
-        // Move the snake along the path
-        for (int i = 0; i < PATH_LENGTH; i++)  // segment
-        {
-            PathSegment segment = path[i]; // grab next segment
-            int step = (segment.startPixel < segment.endPixel) ? 1 : -1;
-            for (int j = segment.startPixel; j != segment.endPixel + step; j += step) // go through the pixels in the segment
-            {
-                // Set the color of the head
-                setPixelColorOnMultiSegmentPath(segment, j, currentColor);
-              
-                // Fade the tail
-                for (int k = 1; k <= tailLength; k++) // for each pixel in the tail k = tail pixel
-                {
-                    int tailPos = j - (k * step);
-                    if (segment.strip == &strip_bottom)
-                    {
-                        if (tailPos >= 0 && tailPos < LED_COUNT_bottom) // at strip bottom and within 0 - max
-                        {
-                            uint32_t fadedColor = blendColors(currentColor, strip_bottom.Color(0, 0, 0, 0), k * 100 / tailLength);
-                            setPixelColorOnMultiSegmentPath(segment, tailPos, fadedColor);
-                        }
-                        else if (i > 0) // not first segment
-                        {
-                            if (tailPos < 0)
-                                setPixelColorOnMultiSegmentPathByStepback(path[i-1], k);
-                            else
-                                setPixelColorOnMultiSegmentPathByStepback(path[i-1], k);
-                        }
-                    }
-                    else if (segment.strip == &strip_top)
-                    {
-                        if (tailPos >= 0 && tailPos < LED_COUNT_top) // at strip top and within 0 - max
-                        {
-                            uint32_t fadedColor = blendColors(currentColor, strip_top.Color(0, 0, 0, 0), k * 100 / tailLength);
-                            setPixelColorOnMultiSegmentPath(segment, tailPos, fadedColor);
-                        }
-                        else if (i > 0) // not first segment
-                        {
-                            if (tailPos < 0)
-                                setPixelColorOnMultiSegmentPathByStepback(path[i-1], k);
-                            else
-                                setPixelColorOnMultiSegmentPathByStepback(path[i-1], k);
-                        }
-                    }
-                    else if (segment.strip == &strip_0 || segment.strip == &strip_4 || segment.strip == &strip_8)
-                    {
-                        if (tailPos >= 0 && tailPos < LED_COUNT_sides)
-                        {
-                            uint32_t fadedColor = blendColors(currentColor, strip_0.Color(0, 0, 0, 0), k * 100 / tailLength);
-                            setPixelColorOnMultiSegmentPath(segment, tailPos, fadedColor);
-                        }
-                        else if (i > 0) // not first segment
-                        {
-                            if (tailPos < 0)
-                                setPixelColorOnMultiSegmentPathByStepback(path[i-1], k);
-                            else
-                                setPixelColorOnMultiSegmentPathByStepback(path[i-1], k);
-                        }
-                    }
-                }
-
-                // Show the updates
-                segment.strip->show();
-                delay(delayTime);
-
-                // Clear the pixel behind the tail
-                int clearPos = j - (snakeLength * step);
-                if (clearPos >= 0 && clearPos < LED_COUNT_bottom && segment.strip == &strip_bottom)
-                {
-                    setPixelColorOnMultiSegmentPath(segment, clearPos, strip_bottom.Color(0, 0, 0, 0));
-                }
-                else if (clearPos >= 0 && clearPos < LED_COUNT_top && segment.strip == &strip_top)
-                {
-                    setPixelColorOnMultiSegmentPath(segment, clearPos, strip_top.Color(0, 0, 0, 0));
-                }
-                else if (clearPos >= 0 && clearPos < LED_COUNT_sides && (segment.strip == &strip_0 || segment.strip == &strip_4 || segment.strip == &strip_8))
-                {
-                    setPixelColorOnMultiSegmentPath(segment, clearPos, strip_0.Color(0, 0, 0, 0));
-                }
-            }
-        }
-
-        // Switch to the next color
-        uint32_t tempColor = currentColor;
-        currentColor = nextColor;
-        nextColor = tempColor;
-    }
-}
-
-void setPixelColorOnMultiSegmentPathByStepback(PathSegment segment, int clearStep)
-{
-  int step = (segment.startPixel < segment.endPixel) ? 1 : -1;
-  
-  setPixelColorOnMultiSegmentPath(segment, segment.endPixel - (clearStep * step), strip_0.Color(0, 0, 0, 0));
-}
-/**
-/ This method changes the color of a pixel in a given segment.
-/ It figures wich strip the segment belongs to and does all the work.
-/
-**/
-void setPixelColorOnMultiSegmentPath(PathSegment segment, int pixelIndex, uint32_t color)
-{
-    if (segment.strip == &strip_bottom && pixelIndex >= 0 && pixelIndex < LED_COUNT_bottom)
-    {
-        strip_bottom.setPixelColor(pixelIndex, color);
-    }
-    else if (segment.strip == &strip_top && pixelIndex >= 0 && pixelIndex < LED_COUNT_top)
-    {
-        strip_top.setPixelColor(pixelIndex, color);
-    }
-    else if (segment.strip == &strip_0 && pixelIndex >= 0 && pixelIndex < LED_COUNT_sides)
-    {
-        strip_0.setPixelColor(pixelIndex, color);
-    }
-    else if (segment.strip == &strip_4 && pixelIndex >= 0 && pixelIndex < LED_COUNT_sides)
-    {
-        strip_4.setPixelColor(pixelIndex, color);
-    }
-    else if (segment.strip == &strip_8 && pixelIndex >= 0 && pixelIndex < LED_COUNT_sides)
-    {
-        strip_8.setPixelColor(pixelIndex, color);
-    }
-}
-
-
 //////////////////////////
 //////// Rainbow /////////
 //////////////////////////
@@ -567,12 +423,14 @@ void rainbowFade(int rainbowLoops, int speed)
   
   int delayMs = 30; // Base/Default
 
-  if(rainbowLoops > -1 && rainbowLoops < 11)
+  if(speed > -1 && speed < 11)
   {
     delayMs = delayMs * (speed/10); 
     Serial.print("delay (ms): ");
     Serial.println(delayMs);
   }
+  else
+    delayMs = delayMs / 2;
 
   // Hue of first pixel runs 'rainbowLoops' complete loops through the color
   // wheel. Color wheel has a range of 65536 but it's OK if we roll over, so
@@ -635,6 +493,7 @@ void rainbowFade(int rainbowLoops, int speed)
     // }
   }
 
+  //// TODO: test and remove if not needed:
   delay(0); // Pause 1/2 second - delay between loops?!? Not sure if this is ever needed...
 }
 
@@ -654,189 +513,7 @@ void rainbowFade(int rainbowLoops, int speed)
 /                   valid values are integers between 1 and 10 with 1 being the most intense and 10 being the mallowest
 **/
 
-/// meteor rain
 
-/**
-/  @param meteorSize – the number of LEDs that represent the meteor, not counting the tail of the meteor.
-/  @param meteorTrailDecay - sets how fast the meteor tail decays/ disappears. A larger number makes the tail short and/or disappear faster. 
-/                            Theoretically a value of 64 should reduce the brightness by 25% for each time the meteor gets drawn.
-/  @param meteorRandomDecay
-/  @param speedDelay
-/
-/
-/
-**/
-
-
-void rain(int duration, int intensity)   
-{
-  gradualChangeToColor(lightBlue, 1000); // Gradually change to light blue over 5 seconds
-  delay(100); // Wait for a while before the next operation
-
-  for (int i = 0; i < 6; i++)
-  {
-    // Pick a random start point
-    int startIndex = random(0, 3);
-    int startPixel = startPoints[startIndex];
-    
-    createWaveEffect(startPixel, 15, 100); // Wave effect for 15 pixels, 100 ms delay between steps
-    delay(100); // Wait for a while before the next operation
-  }
-}
-
-void createWaveEffect(int startPixel, int waveLength, int delayTime)
-{
-    for (int step = 0; step < waveLength; step++)
-    {
-        //int intensity = 255; // Full intensity by default
-
-        // // Reduce intensity for the last three steps
-        // if (step - i <= 2)
-        // {
-        //     intensity = 255 * (step - i + 1) / 3;
-        // }  TODO: add intentity after getting the wave going
-
-        // Calculate and set colors for the wave effect
-      
-        int leftPixel = (startPixel - step + LED_COUNT_bottom) % LED_COUNT_bottom;
-        int rightPixel = (startPixel + step) % LED_COUNT_bottom;
-
-        uint32_t currentColorLeft = darkBlue; //blendColors(waveColor, lightBlue, intensity);
-        uint32_t currentColorRight = darkBlue; //blendColors(waveColor, lightBlue, intensity);
-
-        strip_bottom.setPixelColor(leftPixel, currentColorLeft);
-        strip_bottom.setPixelColor(rightPixel, currentColorRight);
-        
-        uint32_t fadeColor = lightBlue; //blendColors(waveColor, lightBlue, 30);
-
-        if (step > 0)
-        {
-          leftPixel = (startPixel - step - 1 + LED_COUNT_bottom) % LED_COUNT_bottom;
-          rightPixel = (startPixel + step + 1) % LED_COUNT_bottom;
-          strip_bottom.setPixelColor(leftPixel, fadeColor);
-          strip_bottom.setPixelColor(rightPixel, fadeColor);
-        }
-
-        if (step > 1)
-        {
-          leftPixel = (startPixel - step - 2 + LED_COUNT_bottom) % LED_COUNT_bottom;
-          rightPixel = (startPixel + step + 2) % LED_COUNT_bottom;
-          fadeColor = lightBlue; //blendColors(waveColor, lightBlue, 60);
-          strip_bottom.setPixelColor(leftPixel, fadeColor);
-          strip_bottom.setPixelColor(rightPixel, fadeColor);
-        }
-
-        if (step > 2)
-        {
-          leftPixel = (startPixel - step - 6 + LED_COUNT_bottom) % LED_COUNT_bottom;
-          rightPixel = (startPixel + step + 6) % LED_COUNT_bottom;
-          fadeColor = lightBlue;
-          strip_bottom.setPixelColor(leftPixel, fadeColor);
-          strip_bottom.setPixelColor(rightPixel, fadeColor);
-        }
-
-        strip_bottom.show();
-        delay(delayTime);
-    }
-}
-
-
-
-
-
-
-/// TODO: is not used, would love to use on zigzag path!!!
-void meteorRain(byte red, byte green, byte blue, byte meteorSize, byte meteorTrailDecay, boolean meteorRandomDecay, int speedDelay, int loops) 
-{  
-  //strip_bottom.fill(0,0,0);
-  
-  for(int i = 0; i < (LED_COUNT_bottom*loops); i++) 
-  {
-   
-    // fade brightness all LEDs one step
-    for(int j=0; j<LED_COUNT_bottom; j++) 
-    {
-      if( (!meteorRandomDecay) || (random(10)>5) ) 
-      {
-        fadeToBlack(j, meteorTrailDecay );        
-      }
-    }
-
-    int useRed = red;
-    int useGreen = green;
-    int useBlue = blue;
-
-    // draw meteor
-    for(int j = 0; j < meteorSize; j++) 
-    {
-      if( ( i-j <LED_COUNT_bottom) && (i-j>=0) ) 
-      {
-        strip_bottom.setPixelColor(i-j, useRed, useGreen, useBlue);
-      }
-      else if ( i-j >= LED_COUNT_bottom)
-      {
-        if (i%LED_COUNT_bottom-j<0)
-          strip_bottom.setPixelColor(i%LED_COUNT_bottom-j+LED_COUNT_bottom, useRed, useGreen, useBlue);
-        else
-          strip_bottom.setPixelColor(i%LED_COUNT_bottom-j, useRed, useGreen, useBlue);
-      }
-
-      useRed = int(useRed * 0.50);
-      useGreen = int(useGreen * 0.50);
-      useBlue = int(useBlue * 0.50);
-    }
-   
-    strip_bottom.show();
-    delay(speedDelay);
-  }
-}
-
-void fadeToBlack(int ledNo, byte fadeValue) 
-{
- #ifdef ADAFRUIT_NEOPIXEL_H
-    // NeoPixel
-    uint32_t oldColor;
-    uint8_t r, g, b;
-    int value;
-   
-    oldColor = strip_bottom.getPixelColor(ledNo);
-    r = (oldColor & 0x00ff0000UL) >> 16;
-    g = (oldColor & 0x0000ff00UL) >> 8;
-    b = (oldColor & 0x000000ffUL);
-
-    r=(r<=10)? 0 : (int) r-(r*fadeValue/256);
-    g=(g<=10)? 0 : (int) g-(g*fadeValue/256);
-    b=(b<=10)? 0 : (int) b-(b*fadeValue/256);
-   
-    strip_bottom.setPixelColor(ledNo, r,g,b);
- #endif
- #ifndef ADAFRUIT_NEOPIXEL_H
-   // FastLED
-   leds[ledNo].fadeToBlackBy( fadeValue );
- #endif  
-}
-
-
-
-
-// void raindropsEffect() 
-// {
-//   int numRaindrops = random(2, 6); // Choose between 2 and 5 raindrops
-//   int raindropPositions[numRaindrops];
-//   uint32_t raindropColors[numRaindrops];
-  
-
-//   // Initialize raindrop positions and colors
-//   for (int i = 0; i < numRaindrops; i++) 
-//   {
-//     raindropPositions[i] = random(LED_COUNT_bottom);
-//     uint32_t randomColor = colors[random(numColors)];
-//     raindropColors[i] = randomColor;
-//   }
-
-//   // Propagate the raindrops
-//   propagateRaindrops(raindropPositions, raindropColors, numRaindrops, 10, 50); // Adjust steps and delay for effect speed and smoothness
-// }
 
 
 
@@ -1012,10 +689,11 @@ void thunderstorm(int duration, int smokeLevel)
   // fade to black
   gradualChangeToColor(strip_bottom.Color(0,0,0), 1000);
 
-  // Start smoke
-  uint32_t smokeDelay = 4000;
-  uint32_t howLong = 6000;
-  
+  // Smoke delay base
+  uint32_t smokeDelay = 6000;
+  // duration base
+  int rounds = 20; 
+
   if(smokeLevel > -1 && smokeLevel < 11)
   {
     smokeDelay = smokeDelay * (smokeLevel/10); 
@@ -1025,7 +703,21 @@ void thunderstorm(int duration, int smokeLevel)
   else
     smokeDelay = smokeDelay / 2; // no value, give it halfpoint
   
+  if(duration > -1 && duration < 11)
+  {
+    rounds = rounds * (duration/10); 
+    Serial.print("Rounds: ");
+    Serial.println(rounds);
+  }
+  else
+    rounds = rounds / 2; // no value, give it halfpoint
+  
+  // always blow at least some smoke here
+  digitalWrite(SMOKE_PIN, HIGH);
+  delay(1000);
   performEffect();
+  // Stop smoke
+  digitalWrite(SMOKE_PIN, LOW);
 
   if (smokeDelay > 0 )
   {
@@ -1038,7 +730,7 @@ void thunderstorm(int duration, int smokeLevel)
   // Stop smoke
   digitalWrite(SMOKE_PIN, LOW);
   // do some flashing
-  for (int i = 0;i < 10; i++)
+  for (int i = 0;i < rounds; i++)
   {
     performEffect();
   }
@@ -1161,6 +853,8 @@ void blinkStrip(Adafruit_NeoPixel* strip)
 **/
 void solid(uint32_t color, int delayLevel, int smokeLevel)
 {
+    //// TODO: add some fading in and fading out in this function...
+
     strip_bottom.fill(color); 
     strip_top.fill(color);
     strip_0.fill(color);
@@ -1192,7 +886,6 @@ void solid(uint32_t color, int delayLevel, int smokeLevel)
       digitalWrite(SMOKE_PIN, LOW);
     }
 
-    //TODO: add some fading or blinking here...
     if(delayLevel > -1 && delayLevel < 11)
     {
       howLong = howLong * (delayLevel/10);
@@ -1206,6 +899,10 @@ void solid(uint32_t color, int delayLevel, int smokeLevel)
 }
 
 
+
+////////////////////////
+//////// Test //////////
+////////////////////////
 
 
 /**
@@ -1254,12 +951,11 @@ void test(uint32_t color)
     strip_top.fill(color); 
     strip_bottom.show();
     strip_top.show();
-    // digitalWrite(SMOKE_PIN, HIGH);
-    // delay(3000);
-    // digitalWrite(SMOKE_PIN, LOW);
+    digitalWrite(SMOKE_PIN, HIGH);
+    delay(1000);
+    digitalWrite(SMOKE_PIN, LOW);
     
     delay(5000);
-    //rainbowFade(5,10);
 }
 
 
@@ -1518,3 +1214,344 @@ bool parseInput(const char* input, char* str, int integers[5])
 
     return true; // Assuming the input is always well-formed for simplicity
 }
+
+
+
+/////////////////////////////////////////////////////////////////////////////////
+//////////////////// Currently unused or in development /////////////////////////
+/////////////////////////////////////////////////////////////////////////////////
+
+
+
+////////////////////////////
+///////// Snake ////////////
+////////////////////////////
+//// TODO: currently issue with removing train on previous segment, to be fixed in the future  
+
+void runSnake(int snakeLength, int delayTime)
+{
+    uint32_t currentColor = strip_bottom.Color(255, 0, 0, 0); // Start with red
+    uint32_t nextColor = strip_bottom.Color(0, 0, 255, 0); // Change to blue
+
+    int currentPathPosition = 0;
+    while (true)
+    {
+        // Calculate the blend between the current and next color
+        currentColor = blendColors(currentColor, nextColor, 5); // Change gradually
+
+        // Move the snake along the path
+        for (int i = 0; i < PATH_LENGTH; i++)  // segment
+        {
+            PathSegment segment = path[i]; // grab next segment
+            int step = (segment.startPixel < segment.endPixel) ? 1 : -1;
+            for (int j = segment.startPixel; j != segment.endPixel + step; j += step) // go through the pixels in the segment
+            {
+                // Set the color of the head
+                setPixelColorOnMultiSegmentPath(segment, j, currentColor);
+              
+                // Fade the tail
+                for (int k = 1; k <= tailLength; k++) // for each pixel in the tail k = tail pixel
+                {
+                    int tailPos = j - (k * step);
+                    if (segment.strip == &strip_bottom)
+                    {
+                        if (tailPos >= 0 && tailPos < LED_COUNT_bottom) // at strip bottom and within 0 - max
+                        {
+                            uint32_t fadedColor = blendColors(currentColor, strip_bottom.Color(0, 0, 0, 0), k * 100 / tailLength);
+                            setPixelColorOnMultiSegmentPath(segment, tailPos, fadedColor);
+                        }
+                        else if (i > 0) // not first segment
+                        {
+                            if (tailPos < 0)
+                                setPixelColorOnMultiSegmentPathByStepback(path[i-1], k);
+                            else
+                                setPixelColorOnMultiSegmentPathByStepback(path[i-1], k);
+                        }
+                    }
+                    else if (segment.strip == &strip_top)
+                    {
+                        if (tailPos >= 0 && tailPos < LED_COUNT_top) // at strip top and within 0 - max
+                        {
+                            uint32_t fadedColor = blendColors(currentColor, strip_top.Color(0, 0, 0, 0), k * 100 / tailLength);
+                            setPixelColorOnMultiSegmentPath(segment, tailPos, fadedColor);
+                        }
+                        else if (i > 0) // not first segment
+                        {
+                            if (tailPos < 0)
+                                setPixelColorOnMultiSegmentPathByStepback(path[i-1], k);
+                            else
+                                setPixelColorOnMultiSegmentPathByStepback(path[i-1], k);
+                        }
+                    }
+                    else if (segment.strip == &strip_0 || segment.strip == &strip_4 || segment.strip == &strip_8)
+                    {
+                        if (tailPos >= 0 && tailPos < LED_COUNT_sides)
+                        {
+                            uint32_t fadedColor = blendColors(currentColor, strip_0.Color(0, 0, 0, 0), k * 100 / tailLength);
+                            setPixelColorOnMultiSegmentPath(segment, tailPos, fadedColor);
+                        }
+                        else if (i > 0) // not first segment
+                        {
+                            if (tailPos < 0)
+                                setPixelColorOnMultiSegmentPathByStepback(path[i-1], k);
+                            else
+                                setPixelColorOnMultiSegmentPathByStepback(path[i-1], k);
+                        }
+                    }
+                }
+
+                // Show the updates
+                segment.strip->show();
+                delay(delayTime);
+
+                // Clear the pixel behind the tail
+                int clearPos = j - (snakeLength * step);
+                if (clearPos >= 0 && clearPos < LED_COUNT_bottom && segment.strip == &strip_bottom)
+                {
+                    setPixelColorOnMultiSegmentPath(segment, clearPos, strip_bottom.Color(0, 0, 0, 0));
+                }
+                else if (clearPos >= 0 && clearPos < LED_COUNT_top && segment.strip == &strip_top)
+                {
+                    setPixelColorOnMultiSegmentPath(segment, clearPos, strip_top.Color(0, 0, 0, 0));
+                }
+                else if (clearPos >= 0 && clearPos < LED_COUNT_sides && (segment.strip == &strip_0 || segment.strip == &strip_4 || segment.strip == &strip_8))
+                {
+                    setPixelColorOnMultiSegmentPath(segment, clearPos, strip_0.Color(0, 0, 0, 0));
+                }
+            }
+        }
+
+        // Switch to the next color
+        uint32_t tempColor = currentColor;
+        currentColor = nextColor;
+        nextColor = tempColor;
+    }
+}
+
+void setPixelColorOnMultiSegmentPathByStepback(PathSegment segment, int clearStep)
+{
+  int step = (segment.startPixel < segment.endPixel) ? 1 : -1;
+  
+  setPixelColorOnMultiSegmentPath(segment, segment.endPixel - (clearStep * step), strip_0.Color(0, 0, 0, 0));
+}
+/**
+/ This method changes the color of a pixel in a given segment.
+/ It figures wich strip the segment belongs to and does all the work.
+/
+**/
+void setPixelColorOnMultiSegmentPath(PathSegment segment, int pixelIndex, uint32_t color)
+{
+    if (segment.strip == &strip_bottom && pixelIndex >= 0 && pixelIndex < LED_COUNT_bottom)
+    {
+        strip_bottom.setPixelColor(pixelIndex, color);
+    }
+    else if (segment.strip == &strip_top && pixelIndex >= 0 && pixelIndex < LED_COUNT_top)
+    {
+        strip_top.setPixelColor(pixelIndex, color);
+    }
+    else if (segment.strip == &strip_0 && pixelIndex >= 0 && pixelIndex < LED_COUNT_sides)
+    {
+        strip_0.setPixelColor(pixelIndex, color);
+    }
+    else if (segment.strip == &strip_4 && pixelIndex >= 0 && pixelIndex < LED_COUNT_sides)
+    {
+        strip_4.setPixelColor(pixelIndex, color);
+    }
+    else if (segment.strip == &strip_8 && pixelIndex >= 0 && pixelIndex < LED_COUNT_sides)
+    {
+        strip_8.setPixelColor(pixelIndex, color);
+    }
+}
+
+
+
+
+///////////////////////////
+//////// Old Rain /////////
+///////////////////////////
+
+//// TODO: does not work, test with brightness at 255, that might have been the issue...
+
+/// meteor rain
+
+/**
+/  @param meteorSize – the number of LEDs that represent the meteor, not counting the tail of the meteor.
+/  @param meteorTrailDecay - sets how fast the meteor tail decays/ disappears. A larger number makes the tail short and/or disappear faster. 
+/                            Theoretically a value of 64 should reduce the brightness by 25% for each time the meteor gets drawn.
+/  @param meteorRandomDecay
+/  @param speedDelay
+/
+/
+/
+**/
+
+
+void rain(int duration, int intensity)   
+{
+  gradualChangeToColor(lightBlue, 1000); // Gradually change to light blue over 5 seconds
+  delay(100); // Wait for a while before the next operation
+
+  for (int i = 0; i < 6; i++)
+  {
+    // Pick a random start point
+    int startIndex = random(0, 3);
+    int startPixel = startPoints[startIndex];
+    
+    createWaveEffect(startPixel, 15, 100); // Wave effect for 15 pixels, 100 ms delay between steps
+    delay(100); // Wait for a while before the next operation
+  }
+}
+
+void createWaveEffect(int startPixel, int waveLength, int delayTime)
+{
+    for (int step = 0; step < waveLength; step++)
+    {
+        //int intensity = 255; // Full intensity by default
+
+        // // Reduce intensity for the last three steps
+        // if (step - i <= 2)
+        // {
+        //     intensity = 255 * (step - i + 1) / 3;
+        // }  TODO: add intentity after getting the wave going
+
+        // Calculate and set colors for the wave effect
+      
+        int leftPixel = (startPixel - step + LED_COUNT_bottom) % LED_COUNT_bottom;
+        int rightPixel = (startPixel + step) % LED_COUNT_bottom;
+
+        uint32_t currentColorLeft = darkBlue; //blendColors(waveColor, lightBlue, intensity);
+        uint32_t currentColorRight = darkBlue; //blendColors(waveColor, lightBlue, intensity);
+
+        strip_bottom.setPixelColor(leftPixel, currentColorLeft);
+        strip_bottom.setPixelColor(rightPixel, currentColorRight);
+        
+        uint32_t fadeColor = lightBlue; //blendColors(waveColor, lightBlue, 30);
+
+        if (step > 0)
+        {
+          leftPixel = (startPixel - step - 1 + LED_COUNT_bottom) % LED_COUNT_bottom;
+          rightPixel = (startPixel + step + 1) % LED_COUNT_bottom;
+          strip_bottom.setPixelColor(leftPixel, fadeColor);
+          strip_bottom.setPixelColor(rightPixel, fadeColor);
+        }
+
+        if (step > 1)
+        {
+          leftPixel = (startPixel - step - 2 + LED_COUNT_bottom) % LED_COUNT_bottom;
+          rightPixel = (startPixel + step + 2) % LED_COUNT_bottom;
+          fadeColor = lightBlue; //blendColors(waveColor, lightBlue, 60);
+          strip_bottom.setPixelColor(leftPixel, fadeColor);
+          strip_bottom.setPixelColor(rightPixel, fadeColor);
+        }
+
+        if (step > 2)
+        {
+          leftPixel = (startPixel - step - 6 + LED_COUNT_bottom) % LED_COUNT_bottom;
+          rightPixel = (startPixel + step + 6) % LED_COUNT_bottom;
+          fadeColor = lightBlue;
+          strip_bottom.setPixelColor(leftPixel, fadeColor);
+          strip_bottom.setPixelColor(rightPixel, fadeColor);
+        }
+
+        strip_bottom.show();
+        delay(delayTime);
+    }
+}
+
+
+
+
+
+
+/// TODO: is not used, would love to use on zigzag path!!!
+void meteorRain(byte red, byte green, byte blue, byte meteorSize, byte meteorTrailDecay, boolean meteorRandomDecay, int speedDelay, int loops) 
+{  
+  //strip_bottom.fill(0,0,0);
+  
+  for(int i = 0; i < (LED_COUNT_bottom*loops); i++) 
+  {
+   
+    // fade brightness all LEDs one step
+    for(int j=0; j<LED_COUNT_bottom; j++) 
+    {
+      if( (!meteorRandomDecay) || (random(10)>5) ) 
+      {
+        fadeToBlack(j, meteorTrailDecay );        
+      }
+    }
+
+    int useRed = red;
+    int useGreen = green;
+    int useBlue = blue;
+
+    // draw meteor
+    for(int j = 0; j < meteorSize; j++) 
+    {
+      if( ( i-j <LED_COUNT_bottom) && (i-j>=0) ) 
+      {
+        strip_bottom.setPixelColor(i-j, useRed, useGreen, useBlue);
+      }
+      else if ( i-j >= LED_COUNT_bottom)
+      {
+        if (i%LED_COUNT_bottom-j<0)
+          strip_bottom.setPixelColor(i%LED_COUNT_bottom-j+LED_COUNT_bottom, useRed, useGreen, useBlue);
+        else
+          strip_bottom.setPixelColor(i%LED_COUNT_bottom-j, useRed, useGreen, useBlue);
+      }
+
+      useRed = int(useRed * 0.50);
+      useGreen = int(useGreen * 0.50);
+      useBlue = int(useBlue * 0.50);
+    }
+   
+    strip_bottom.show();
+    delay(speedDelay);
+  }
+}
+
+void fadeToBlack(int ledNo, byte fadeValue) 
+{
+ #ifdef ADAFRUIT_NEOPIXEL_H
+    // NeoPixel
+    uint32_t oldColor;
+    uint8_t r, g, b;
+    int value;
+   
+    oldColor = strip_bottom.getPixelColor(ledNo);
+    r = (oldColor & 0x00ff0000UL) >> 16;
+    g = (oldColor & 0x0000ff00UL) >> 8;
+    b = (oldColor & 0x000000ffUL);
+
+    r=(r<=10)? 0 : (int) r-(r*fadeValue/256);
+    g=(g<=10)? 0 : (int) g-(g*fadeValue/256);
+    b=(b<=10)? 0 : (int) b-(b*fadeValue/256);
+   
+    strip_bottom.setPixelColor(ledNo, r,g,b);
+ #endif
+ #ifndef ADAFRUIT_NEOPIXEL_H
+   // FastLED
+   leds[ledNo].fadeToBlackBy( fadeValue );
+ #endif  
+}
+
+
+
+
+// void raindropsEffect() 
+// {
+//   int numRaindrops = random(2, 6); // Choose between 2 and 5 raindrops
+//   int raindropPositions[numRaindrops];
+//   uint32_t raindropColors[numRaindrops];
+  
+
+//   // Initialize raindrop positions and colors
+//   for (int i = 0; i < numRaindrops; i++) 
+//   {
+//     raindropPositions[i] = random(LED_COUNT_bottom);
+//     uint32_t randomColor = colors[random(numColors)];
+//     raindropColors[i] = randomColor;
+//   }
+
+//   // Propagate the raindrops
+//   propagateRaindrops(raindropPositions, raindropColors, numRaindrops, 10, 50); // Adjust steps and delay for effect speed and smoothness
+// }
