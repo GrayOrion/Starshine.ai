@@ -69,6 +69,11 @@ uint32_t darkBlue = strip_bottom.Color(0, 0, 255); // Full blue
 // Randomly selected starting points (where our 3 side strips reside) - currently used for thruderstrom
 const int startPoints[3] = {0, 19, 39};
 
+//////////////////////////////////
+///// For rain ///////////////////
+uint32_t baseColor = strip_bottom.Color(0, 0, 10, 0); // Example base color
+uint32_t waveColor = strip_bottom.Color(10, 10, 50, 0); // Example wave color
+
 
 /// Definitions and Variables/constants for the snake ///////////
 /// Path going around and up and down through the side strips ///
@@ -251,7 +256,6 @@ The wave head stops at the waveLenth pixel mark, but the pixels behind it (and t
 
 void loop() 
 {
-
   if (Serial.available() > 0) 
   {
     // Serial.println("Starting");
@@ -261,7 +265,7 @@ void loop()
       gradualChangeToColor(strip_bottom.Color(0,0,0), 1000);
   }
   //runSnake(5,100);
-  Sparkle(255, 0, 255, 30);
+  sparkle(255, 0, 255, 30);
 }
 
 //////////////////////////////////////////////////////
@@ -285,8 +289,8 @@ boolean runSequenceFromSerialInput()
   
   if (parseInput(inputString, parsedString, parsedIntegers)) 
   {
-    // Serial.print("String part: ");
-    // Serial.println(parsedString);
+    //Serial.print("String part: ");
+    //Serial.println(parsedString);
     // Serial.print("Integer parts: ");
     // for (int i = 0; i < 5; ++i) 
     // {
@@ -294,7 +298,7 @@ boolean runSequenceFromSerialInput()
     //   Serial.print(" ");
     // }
     // Serial.println();
-
+    char firstChar = 'd';
     if (strcmp(parsedString, "rainbow") == 0) //parsedString[0] == 'r' 
     {// 5, 30, 0
       rainbowFade(parsedIntegers[0], parsedIntegers[1]);
@@ -309,7 +313,7 @@ boolean runSequenceFromSerialInput()
     {
       fire(parsedIntegers[0], parsedIntegers[1], parsedIntegers[2]);
     }
-    else if (strcmp(parsedString, "flood") == 0) //parsedString[0] == 'd'
+    else if (parsedString[0] == 'd') // strcmp(parsedString, "flood") == 0) //
     {
       solid(strip_bottom.Color(parsedIntegers[0], parsedIntegers[1], parsedIntegers[2]), parsedIntegers[3], parsedIntegers[4]);
     }
@@ -357,7 +361,7 @@ boolean runSequenceFromSerialInput()
 // Call with Sparkle(0xff, 0xff, 0xff, 0);
 // This might be the best function to run as in between calls, but might needto add a before dimming
 
-void Sparkle(byte red, byte green, byte blue, int SpeedDelay) {
+void sparkle(byte red, byte green, byte blue, int SpeedDelay) {
   int pixel1 = random(NUM_LEDS);
   int pixel2 = random(NUM_LEDS);
   int pixel3 = random(NUM_LEDS);
@@ -413,7 +417,7 @@ void rainbowFade(int rainbowLoops, int speed)
   int fadeVal=100, fadeMax=100;
   int defaultLoops = 5;
 
-  if(rainbowLoops > -1 && rainbowLoops < 11)
+  if(rainbowLoops > 1 && rainbowLoops < 11)
   {
     Serial.print("rainbow loops: ");
     Serial.println(rainbowLoops);
@@ -421,7 +425,7 @@ void rainbowFade(int rainbowLoops, int speed)
   else
     rainbowLoops = defaultLoops; // no value, give it default
   
-  int delayMs = 30; // Base/Default
+  int delayMs = 10; // Base/Default
 
   if(speed > -1 && speed < 11)
   {
@@ -513,10 +517,555 @@ void rainbowFade(int rainbowLoops, int speed)
 /                   valid values are integers between 1 and 10 with 1 being the most intense and 10 being the mallowest
 **/
 
+void rain(int duration, int intensity)   
+{
+  gradualChangeToColor(strip_bottom.Color(0,0,0,0), 500); // Gradually change to black
+  gradualChangeToColor(baseColor, 500); // Gradually change to light blue over 5 seconds
+  
+  digitalWrite(SMOKE_PIN, HIGH);
+  delay(2000);
+  digitalWrite(SMOKE_PIN, LOW);
+
+  strip_bottom.setBrightness(255);
+  strip_0.setBrightness(255);
+  strip_4.setBrightness(255);
+  strip_8.setBrightness(255);
+
+  int loops = 30;
+  int baseIntensity = 10;
+
+  if(duration > -1 && duration < 11)
+  {
+    loops = loops * (duration/10); 
+    Serial.print("loops: ");
+    Serial.println(loops);
+  }
+  else
+    loops = loops / 2;
+
+
+  if(intensity > -1 && intensity < 11)
+  {
+    baseIntensity = baseIntensity * (intensity/10); 
+    Serial.print("Intensity: ");
+    Serial.println(baseIntensity);
+  }
+  else
+    baseIntensity = baseIntensity / 2;
+
+
+  for (int i = 0; i < loops; i++)
+  {
+    raining(intensity);
+  }
+
+  strip_bottom.setBrightness(BRIGHTNESS);
+  strip_0.setBrightness(BRIGHTNESS);
+  strip_4.setBrightness(BRIGHTNESS);
+  strip_8.setBrightness(BRIGHTNESS);
+}
+
+void raining(int intensity)
+{
+    strip_bottom.fill(baseColor);
+    strip_bottom.show();
+    int stripNumber = random(0, 3);
+    int size = random(0, 10);
+    int startPixel = startPoints[stripNumber];
+    Adafruit_NeoPixel* mainStrip;
+    
+    switch (stripNumber)
+    {
+        case 0:
+            mainStrip = &strip_0;     
+            break;
+        case 1:
+            mainStrip = &strip_4;
+            break;
+        case 2:
+            mainStrip = &strip_8;
+            break;
+    }
+    raindrop(mainStrip, strip_bottom.Color(0, 0, 100, 0),strip_bottom.Color(0, 0, 0, 0), intensity);
+    delay(25 * intensity / 10);
+    strip_bottom.setPixelColor(startPixel, strip_bottom.Color(0, 0, 100, 0));
+    strip_bottom.show();
+    delay(25 * intensity / 10);
+    if (size < 5)
+    {
+        createTinyRipple(5, startPixel, intensity);
+    } 
+    else if (size < 8)
+    { 
+        createSmallRipple(7, startPixel, intensity);
+    }
+    else if (size < 9)
+    {
+        createMediumRipple(12, startPixel, intensity);
+    }
+    else
+        createRipple(random(15,20), startPixel, intensity);
+    
+    //// TODO: test and remove if not needed
+    delay(0); // Wait for 2 seconds before creating another ripple 
+}
+
+
+void raindrop(Adafruit_NeoPixel* mainStrip, uint32_t dropColor, uint32_t baseColor, int intensity)
+{
+    // Light up the main strip from 0 to 7 pixels with accelerating speed
+    for (int i = LED_COUNT_sides - 1; i >= 0; i--)
+    {
+      mainStrip->setPixelColor(i, dropColor);
+      mainStrip->show();
+      delay((30 - (i * 3)) * intensity / 10); // Accelerating delay
+      mainStrip->setPixelColor(i, baseColor);
+    }
+
+    // Turn off the main strip after blinking
+    mainStrip->clear();
+    mainStrip->show();
+}
 
 
 
+void createRipple(int rippleLength, int startPixel, int intensity) 
+{
+  uint32_t fadeColor1 = blendColors(waveColor, baseColor, 70);
+  uint32_t fadeColor2 = blendColors(waveColor, baseColor, 40);
+  uint32_t fadeColor3 = blendColors(waveColor, baseColor, 20);
 
+  strip_bottom.fill(baseColor);
+  strip_bottom.show();
+
+  for (int pos = 0; pos <= rippleLength; pos++) 
+  {
+    int placeInWave = 1;
+    // Update ripple effect
+    for (int i = pos; i >=0; i--) 
+    {
+      int pixelIndexForward = (startPixel + i) % LED_COUNT_bottom;
+      int pixelIndexBackward = (startPixel - i + LED_COUNT_bottom) % LED_COUNT_bottom;
+
+      if (placeInWave == 1 || placeInWave == 6 || placeInWave == 11) 
+      {
+        strip_bottom.setPixelColor(pixelIndexForward, waveColor); // Ripple head forward
+        strip_bottom.setPixelColor(pixelIndexBackward, waveColor); // Ripple head backward
+      } 
+      else if (placeInWave == 2 || placeInWave == 7 || placeInWave == 12) 
+      {
+        strip_bottom.setPixelColor(pixelIndexForward, fadeColor1); // 30% fade forward
+        strip_bottom.setPixelColor(pixelIndexBackward, fadeColor1); // 30% fade backward
+      } 
+      else if (placeInWave == 3 || placeInWave == 8 || placeInWave == 13) 
+      {
+        strip_bottom.setPixelColor(pixelIndexForward, fadeColor2); // 60% fade forward
+        strip_bottom.setPixelColor(pixelIndexBackward, fadeColor2); // 60% fade backward
+      } 
+      else if (placeInWave == 4 || placeInWave == 9 || placeInWave == 14) 
+      {
+        strip_bottom.setPixelColor(pixelIndexForward, fadeColor3); // 80% fade forward
+        strip_bottom.setPixelColor(pixelIndexBackward, fadeColor3); // 80% fade backward
+      }
+      else if (placeInWave == 5 || placeInWave == 10 || placeInWave == 15) 
+      {
+        strip_bottom.setPixelColor(pixelIndexForward, baseColor); // back to base
+        strip_bottom.setPixelColor(pixelIndexBackward, baseColor); // back to base
+      }
+
+      placeInWave++;
+    }
+
+    strip_bottom.show();
+    delay(35 * intensity / 10); // Adjust delay for ripple speed
+  }
+
+  for (int fadeSteps = 0; fadeSteps < 6; fadeSteps++)
+  {
+    int moveSteps = 0;
+    for (int i = rippleLength; i > 0; i--)
+    {
+      int pixelIndexForward = (startPixel + i) % LED_COUNT_bottom;
+      int pixelIndexBackward = (startPixel - i + LED_COUNT_bottom) % LED_COUNT_bottom;
+
+      if (fadeSteps == 0 && strip_bottom.getPixelColor(pixelIndexForward) == fadeColor3)
+      {
+        moveSteps++;
+      }
+      else if (fadeSteps == 1 && strip_bottom.getPixelColor(pixelIndexForward) == fadeColor2)
+      {
+        moveSteps++;
+      }
+      else if (fadeSteps == 2 && strip_bottom.getPixelColor(pixelIndexForward) == fadeColor1)
+      {
+        moveSteps++;
+      }
+      else if (fadeSteps == 3 && strip_bottom.getPixelColor(pixelIndexForward) == fadeColor1)
+      {
+        moveSteps++;
+      }
+      else if (fadeSteps == 4 && strip_bottom.getPixelColor(pixelIndexForward) == baseColor)
+      {
+        moveSteps++;
+      }
+
+      if (moveSteps > 0)
+      {
+        strip_bottom.setPixelColor(pixelIndexForward, strip_bottom.getPixelColor((pixelIndexForward - moveSteps + LED_COUNT_bottom) % LED_COUNT_bottom));
+        strip_bottom.setPixelColor(pixelIndexBackward, strip_bottom.getPixelColor((pixelIndexBackward + moveSteps) % LED_COUNT_bottom));
+      }
+
+    }
+    strip_bottom.show();
+    delay(30 * intensity / 10); // Adjust delay for ripple speed
+  }
+
+  for (int j = 0; j < 5 + 1;j++)
+  {
+    for (int i = rippleLength; i > 0; i--)
+    {
+      int pixelIndexForward = (startPixel + i) % LED_COUNT_bottom;
+      int pixelIndexBackward = (startPixel - i + LED_COUNT_bottom) % LED_COUNT_bottom;
+
+      if (strip_bottom.getPixelColor(pixelIndexForward) != baseColor && strip_bottom.getPixelColor((pixelIndexForward - 1 + LED_COUNT_bottom) % LED_COUNT_bottom) == baseColor)
+      {
+        strip_bottom.setPixelColor(pixelIndexForward, strip_bottom.getPixelColor((pixelIndexForward - 1 + LED_COUNT_bottom) % LED_COUNT_bottom));
+        strip_bottom.setPixelColor(pixelIndexBackward, strip_bottom.getPixelColor((pixelIndexBackward + 1) % LED_COUNT_bottom));
+      }
+    }
+    strip_bottom.show();
+    delay(20 * intensity / 10); // Adjust delay for ripple speed
+  }
+}
+
+
+void createTinyRipple(int rippleLength, int startPixel, int intensity)   // 1 - 6
+{
+  uint32_t fadeColor1 = blendColors(waveColor, baseColor, 70);
+  uint32_t fadeColor2 = blendColors(waveColor, baseColor, 40);
+  uint32_t fadeColor3 = blendColors(waveColor, baseColor, 20);
+
+  strip_bottom.fill(baseColor);
+  strip_bottom.show();
+
+  for (int pos = 0; pos <= rippleLength; pos++) 
+  {
+    int placeInWave = 1;
+    // Update ripple effect
+    for (int i = pos; i >=0; i--) 
+    {
+      int pixelIndexForward = (startPixel + i) % LED_COUNT_bottom;
+      int pixelIndexBackward = (startPixel - i + LED_COUNT_bottom) % LED_COUNT_bottom;
+
+      if (placeInWave == 1) 
+      {
+        strip_bottom.setPixelColor(pixelIndexForward, waveColor); // Ripple head forward
+        strip_bottom.setPixelColor(pixelIndexBackward, waveColor); // Ripple head backward
+      } 
+      else if (placeInWave == 2) 
+      {
+        strip_bottom.setPixelColor(pixelIndexForward, fadeColor1); // 30% fade forward
+        strip_bottom.setPixelColor(pixelIndexBackward, fadeColor1); // 30% fade backward
+      } 
+      else if (placeInWave == 3) 
+      {
+        strip_bottom.setPixelColor(pixelIndexForward, fadeColor2); // 60% fade forward
+        strip_bottom.setPixelColor(pixelIndexBackward, fadeColor2); // 60% fade backward
+      } 
+      else if (placeInWave == 4) 
+      {
+        strip_bottom.setPixelColor(pixelIndexForward, fadeColor3); // 80% fade forward
+        strip_bottom.setPixelColor(pixelIndexBackward, fadeColor3); // 80% fade backward
+      }
+      else if (placeInWave == 5) 
+      {
+        strip_bottom.setPixelColor(pixelIndexForward, baseColor); // back to base
+        strip_bottom.setPixelColor(pixelIndexBackward, baseColor); // back to base
+      }
+
+      placeInWave++;
+    }
+
+    strip_bottom.show();
+    delay(35 * intensity / 10); // Adjust delay for ripple speed
+  }
+
+  for (int fadeSteps = 0; fadeSteps < 6; fadeSteps++) // removing all middle colors and staying only with wave color and base color, all wave color in front
+  {
+    int moveSteps = 0;
+    for (int i = rippleLength; i > 0; i--)
+    {
+      int pixelIndexForward = (startPixel + i) % LED_COUNT_bottom;
+      int pixelIndexBackward = (startPixel - i + LED_COUNT_bottom) % LED_COUNT_bottom;
+
+      if (fadeSteps == 0 && strip_bottom.getPixelColor(pixelIndexForward) == fadeColor3)
+      {
+        moveSteps++;
+      }
+      else if (fadeSteps == 1 && strip_bottom.getPixelColor(pixelIndexForward) == fadeColor2)
+      {
+        moveSteps++;
+      }
+      else if (fadeSteps == 2 && strip_bottom.getPixelColor(pixelIndexForward) == fadeColor1)
+      {
+        moveSteps++;
+      }
+      else if (fadeSteps == 3 && strip_bottom.getPixelColor(pixelIndexForward) == fadeColor1)
+      {
+        moveSteps++;
+      }
+      else if (fadeSteps == 4 && strip_bottom.getPixelColor(pixelIndexForward) == baseColor)
+      {
+        moveSteps++;
+      }
+
+      if (moveSteps > 0)
+      {
+        strip_bottom.setPixelColor(pixelIndexForward, strip_bottom.getPixelColor((pixelIndexForward - moveSteps + LED_COUNT_bottom) % LED_COUNT_bottom));
+        strip_bottom.setPixelColor(pixelIndexBackward, strip_bottom.getPixelColor((pixelIndexBackward + moveSteps) % LED_COUNT_bottom));
+      }
+
+    }
+    strip_bottom.show();
+    delay(30 * intensity / 10); // Adjust delay for ripple speed
+  }
+
+  for (int j = 0; j < 4 + 1;j++) // removing all wave colors one by one
+  {
+    for (int i = rippleLength; i > 0; i--)
+    {
+      int pixelIndexForward = (startPixel + i) % LED_COUNT_bottom;
+      int pixelIndexBackward = (startPixel - i + LED_COUNT_bottom) % LED_COUNT_bottom;
+
+      if (strip_bottom.getPixelColor(pixelIndexForward) != baseColor && strip_bottom.getPixelColor((pixelIndexForward - 1 + LED_COUNT_bottom) % LED_COUNT_bottom) == baseColor)
+      {
+        strip_bottom.setPixelColor(pixelIndexForward, strip_bottom.getPixelColor((pixelIndexForward - 1 + LED_COUNT_bottom) % LED_COUNT_bottom));
+        strip_bottom.setPixelColor(pixelIndexBackward, strip_bottom.getPixelColor((pixelIndexBackward + 1) % LED_COUNT_bottom));
+      }
+    }
+    strip_bottom.show();
+    delay(20 * intensity / 10); // Adjust delay for ripple speed
+  }
+}
+
+
+void createSmallRipple(int rippleLength, int startPixel, int intensity)   // 1 - 6
+{
+  uint32_t fadeColor1 = blendColors(waveColor, baseColor, 70);
+  uint32_t fadeColor2 = blendColors(waveColor, baseColor, 40);
+  uint32_t fadeColor3 = blendColors(waveColor, baseColor, 20);
+
+  strip_bottom.fill(baseColor);
+  strip_bottom.show();
+
+  for (int pos = 0; pos <= rippleLength; pos++) 
+  {
+    int placeInWave = 1;
+    // Update ripple effect
+    for (int i = pos; i >=0; i--) 
+    {
+      int pixelIndexForward = (startPixel + i) % LED_COUNT_bottom;
+      int pixelIndexBackward = (startPixel - i + LED_COUNT_bottom) % LED_COUNT_bottom;
+
+      if (placeInWave == 1 || placeInWave == 6) 
+      {
+        strip_bottom.setPixelColor(pixelIndexForward, waveColor); // Ripple head forward
+        strip_bottom.setPixelColor(pixelIndexBackward, waveColor); // Ripple head backward
+      } 
+      else if (placeInWave == 2) 
+      {
+        strip_bottom.setPixelColor(pixelIndexForward, fadeColor1); // 30% fade forward
+        strip_bottom.setPixelColor(pixelIndexBackward, fadeColor1); // 30% fade backward
+      } 
+      else if (placeInWave == 3) 
+      {
+        strip_bottom.setPixelColor(pixelIndexForward, fadeColor2); // 60% fade forward
+        strip_bottom.setPixelColor(pixelIndexBackward, fadeColor2); // 60% fade backward
+      } 
+      else if (placeInWave == 4) 
+      {
+        strip_bottom.setPixelColor(pixelIndexForward, fadeColor3); // 80% fade forward
+        strip_bottom.setPixelColor(pixelIndexBackward, fadeColor3); // 80% fade backward
+      }
+      else if (placeInWave == 5 || placeInWave == 7) 
+      {
+        strip_bottom.setPixelColor(pixelIndexForward, baseColor); // back to base
+        strip_bottom.setPixelColor(pixelIndexBackward, baseColor); // back to base
+      }
+
+      placeInWave++;
+    }
+
+    strip_bottom.show();
+    delay(35 * intensity / 10); // Adjust delay for ripple speed
+  }
+
+  for (int fadeSteps = 0; fadeSteps < 6; fadeSteps++) // removing all middle colors and staying only with wave colr and base color, all wave color in front
+  {
+    int moveSteps = 0;
+    for (int i = rippleLength; i > 0; i--)
+    {
+      int pixelIndexForward = (startPixel + i) % LED_COUNT_bottom;
+      int pixelIndexBackward = (startPixel - i + LED_COUNT_bottom) % LED_COUNT_bottom;
+
+      if (fadeSteps == 0 && strip_bottom.getPixelColor(pixelIndexForward) == fadeColor3)
+      {
+        moveSteps++;
+      }
+      else if (fadeSteps == 1 && strip_bottom.getPixelColor(pixelIndexForward) == fadeColor2)
+      {
+        moveSteps++;
+      }
+      else if (fadeSteps == 2 && strip_bottom.getPixelColor(pixelIndexForward) == fadeColor1)
+      {
+        moveSteps++;
+      }
+      else if (fadeSteps == 3 && strip_bottom.getPixelColor(pixelIndexForward) == fadeColor1)
+      {
+        moveSteps++;
+      }
+      else if (fadeSteps == 4 && strip_bottom.getPixelColor(pixelIndexForward) == baseColor)
+      {
+        moveSteps++;
+      }
+
+      if (moveSteps > 0)
+      {
+        strip_bottom.setPixelColor(pixelIndexForward, strip_bottom.getPixelColor((pixelIndexForward - moveSteps + LED_COUNT_bottom) % LED_COUNT_bottom));
+        strip_bottom.setPixelColor(pixelIndexBackward, strip_bottom.getPixelColor((pixelIndexBackward + moveSteps) % LED_COUNT_bottom));
+      }
+
+    }
+    strip_bottom.show();
+    delay(30 * intensity / 10); // Adjust delay for ripple speed
+  }
+
+  for (int j = 0; j < 4 + 1;j++) // removing all wave colors one by one
+  {
+    for (int i = rippleLength; i > 0; i--)
+    {
+      int pixelIndexForward = (startPixel + i) % LED_COUNT_bottom;
+      int pixelIndexBackward = (startPixel - i + LED_COUNT_bottom) % LED_COUNT_bottom;
+
+      if (strip_bottom.getPixelColor(pixelIndexForward) != baseColor && strip_bottom.getPixelColor((pixelIndexForward - 1 + LED_COUNT_bottom) % LED_COUNT_bottom) == baseColor)
+      {
+        strip_bottom.setPixelColor(pixelIndexForward, strip_bottom.getPixelColor((pixelIndexForward - 1 + LED_COUNT_bottom) % LED_COUNT_bottom));
+        strip_bottom.setPixelColor(pixelIndexBackward, strip_bottom.getPixelColor((pixelIndexBackward + 1) % LED_COUNT_bottom));
+      }
+    }
+    strip_bottom.show();
+    delay(20 * intensity / 10); // Adjust delay for ripple speed
+  }
+}
+
+void createMediumRipple(int rippleLength, int startPixel, int intensity)   // 1 - 6
+{
+  uint32_t fadeColor1 = blendColors(waveColor, baseColor, 70);
+  uint32_t fadeColor2 = blendColors(waveColor, baseColor, 40);
+  uint32_t fadeColor3 = blendColors(waveColor, baseColor, 20);
+
+  strip_bottom.fill(baseColor);
+  strip_bottom.show();
+
+  for (int pos = 0; pos <= rippleLength; pos++) 
+  {
+    int placeInWave = 1;
+    // Update ripple effect
+    for (int i = pos; i >=0; i--) 
+    {
+      int pixelIndexForward = (startPixel + i) % LED_COUNT_bottom;
+      int pixelIndexBackward = (startPixel - i + LED_COUNT_bottom) % LED_COUNT_bottom;
+
+      if (placeInWave == 1 || placeInWave == 6 || placeInWave == 11) 
+      {
+        strip_bottom.setPixelColor(pixelIndexForward, waveColor); // Ripple head forward
+        strip_bottom.setPixelColor(pixelIndexBackward, waveColor); // Ripple head backward
+      } 
+      else if (placeInWave == 2 || placeInWave == 7) 
+      {
+        strip_bottom.setPixelColor(pixelIndexForward, fadeColor1); // 30% fade forward
+        strip_bottom.setPixelColor(pixelIndexBackward, fadeColor1); // 30% fade backward
+      } 
+      else if (placeInWave == 3 || placeInWave == 8) 
+      {
+        strip_bottom.setPixelColor(pixelIndexForward, fadeColor2); // 60% fade forward
+        strip_bottom.setPixelColor(pixelIndexBackward, fadeColor2); // 60% fade backward
+      } 
+      else if (placeInWave == 4 || placeInWave == 9) 
+      {
+        strip_bottom.setPixelColor(pixelIndexForward, fadeColor3); // 80% fade forward
+        strip_bottom.setPixelColor(pixelIndexBackward, fadeColor3); // 80% fade backward
+      }
+      else if (placeInWave == 5 || placeInWave == 10 || placeInWave == 12) 
+      {
+        strip_bottom.setPixelColor(pixelIndexForward, baseColor); // back to base
+        strip_bottom.setPixelColor(pixelIndexBackward, baseColor); // back to base
+      }
+
+      placeInWave++;
+    }
+
+    strip_bottom.show();
+    delay(35 * intensity / 10); // Adjust delay for ripple speed
+  }
+
+  for (int fadeSteps = 0; fadeSteps < 6; fadeSteps++) // removing all middle colors and staying only with wave colr and base color, all wave color in front
+  {
+    int moveSteps = 0;
+    for (int i = rippleLength; i > 0; i--)
+    {
+      int pixelIndexForward = (startPixel + i) % LED_COUNT_bottom;
+      int pixelIndexBackward = (startPixel - i + LED_COUNT_bottom) % LED_COUNT_bottom;
+
+      if (fadeSteps == 0 && strip_bottom.getPixelColor(pixelIndexForward) == fadeColor3)
+      {
+        moveSteps++;
+      }
+      else if (fadeSteps == 1 && strip_bottom.getPixelColor(pixelIndexForward) == fadeColor2)
+      {
+        moveSteps++;
+      }
+      else if (fadeSteps == 2 && strip_bottom.getPixelColor(pixelIndexForward) == fadeColor1)
+      {
+        moveSteps++;
+      }
+      else if (fadeSteps == 3 && strip_bottom.getPixelColor(pixelIndexForward) == fadeColor1)
+      {
+        moveSteps++;
+      }
+      else if (fadeSteps == 4 && strip_bottom.getPixelColor(pixelIndexForward) == baseColor)
+      {
+        moveSteps++;
+      }
+
+      if (moveSteps > 0)
+      {
+        strip_bottom.setPixelColor(pixelIndexForward, strip_bottom.getPixelColor((pixelIndexForward - moveSteps + LED_COUNT_bottom) % LED_COUNT_bottom));
+        strip_bottom.setPixelColor(pixelIndexBackward, strip_bottom.getPixelColor((pixelIndexBackward + moveSteps) % LED_COUNT_bottom));
+      }
+
+    }
+    strip_bottom.show();
+    delay(30 * intensity / 10); // Adjust delay for ripple speed
+  }
+
+  for (int j = 0; j < 4 + 1;j++) // removing all wave colors one by one
+  {
+    for (int i = rippleLength; i > 0; i--)
+    {
+      int pixelIndexForward = (startPixel + i) % LED_COUNT_bottom;
+      int pixelIndexBackward = (startPixel - i + LED_COUNT_bottom) % LED_COUNT_bottom;
+
+      if (strip_bottom.getPixelColor(pixelIndexForward) != baseColor && strip_bottom.getPixelColor((pixelIndexForward - 1 + LED_COUNT_bottom) % LED_COUNT_bottom) == baseColor)
+      {
+        strip_bottom.setPixelColor(pixelIndexForward, strip_bottom.getPixelColor((pixelIndexForward - 1 + LED_COUNT_bottom) % LED_COUNT_bottom));
+        strip_bottom.setPixelColor(pixelIndexBackward, strip_bottom.getPixelColor((pixelIndexBackward + 1) % LED_COUNT_bottom));
+      }
+    }
+    strip_bottom.show();
+    delay(20 * intensity / 10); // Adjust delay for ripple speed
+  }
+}
 ///////////////////////////
 ////////// Fire ///////////
 ///////////////////////////
@@ -771,7 +1320,7 @@ void performEffect()
     // blink top strip
     strip_top.fill(color);
     strip_top.show();
-    delay(100);
+    delay(50);
     strip_top.clear();
     strip_top.show();
 
@@ -780,7 +1329,7 @@ void performEffect()
     {
         mainStrip->setPixelColor(i, color);
         mainStrip->show();
-        delay(100 - (i * 10)); // Accelerating delay
+        delay(50 - (i * 5)); // Accelerating delay
     }
 
     // Turn off the main strip after blinking
@@ -790,17 +1339,17 @@ void performEffect()
     // blink top strip
     strip_bottom.setPixelColor(bottom_pixel, color);
     strip_bottom.show();
-    delay(100);
+    delay(50);
     strip_bottom.setPixelColor(bottom_pixel+1, color);
     strip_bottom.setPixelColor((LED_COUNT_bottom+bottom_pixel-1)%LED_COUNT_bottom, color);
     strip_bottom.show();
-    delay(100);
+    delay(50);
     strip_bottom.clear();
     strip_bottom.show();
 
     // Blink stripA and stripB in sequence
     blinkStrip(stripA);
-    delay(300); // Short delay between strips
+    delay(150); // Short delay between strips
     blinkStrip(stripB);
 }
 
@@ -811,23 +1360,23 @@ void blinkStrip(Adafruit_NeoPixel* strip)
     {
         strip->clear();
         strip->show();
-        delay(100);
+        delay(50);
         for (int j = 0; j < LED_COUNT_sides; j++)
         {
             strip->setPixelColor(j, color);
         }
         strip->show();
-        delay(100);
+        delay(50);
     }
     strip->clear();
     strip->show();
-    delay(100);
+    delay(50);
     for (int j = 0; j < LED_COUNT_sides; j++)
     {
         strip->setPixelColor(j, color);
     }
     strip->show();
-    delay(300); // Last 'on' delay is three times as long
+    delay(150); // Last 'on' delay is three times as long
 
     // Turn off the strip after blinking
     strip->clear();
@@ -853,8 +1402,8 @@ void blinkStrip(Adafruit_NeoPixel* strip)
 **/
 void solid(uint32_t color, int delayLevel, int smokeLevel)
 {
-    //// TODO: add some fading in and fading out in this function...
-
+    gradualChangeToColor(strip_bottom.Color(0,0,0,0), 1000); // Gradually change to black
+    gradualChangeToColor(color, 2000); // Gradually change to color
     strip_bottom.fill(color); 
     strip_top.fill(color);
     strip_0.fill(color);
@@ -868,7 +1417,7 @@ void solid(uint32_t color, int delayLevel, int smokeLevel)
     strip_8.show();
 
     uint32_t smokeDelay = 4000;
-    uint32_t howLong = 6000;
+    uint32_t howLong = 15000;
 
     if(smokeLevel > -1 && smokeLevel < 11)
     {
@@ -894,7 +1443,7 @@ void solid(uint32_t color, int delayLevel, int smokeLevel)
     }
     else
       howLong = howLong/2; // no value, give it halfpoint
-
+    delay(2000);
     delay(howLong);
 }
 
@@ -1386,21 +1935,21 @@ void setPixelColorOnMultiSegmentPath(PathSegment segment, int pixelIndex, uint32
 **/
 
 
-void rain(int duration, int intensity)   
-{
-  gradualChangeToColor(lightBlue, 1000); // Gradually change to light blue over 5 seconds
-  delay(100); // Wait for a while before the next operation
+// void rain(int duration, int intensity)   
+// {
+//   gradualChangeToColor(lightBlue, 1000); // Gradually change to light blue over 5 seconds
+//   delay(100); // Wait for a while before the next operation
 
-  for (int i = 0; i < 6; i++)
-  {
-    // Pick a random start point
-    int startIndex = random(0, 3);
-    int startPixel = startPoints[startIndex];
+//   for (int i = 0; i < 6; i++)
+//   {
+//     // Pick a random start point
+//     int startIndex = random(0, 3);
+//     int startPixel = startPoints[startIndex];
     
-    createWaveEffect(startPixel, 15, 100); // Wave effect for 15 pixels, 100 ms delay between steps
-    delay(100); // Wait for a while before the next operation
-  }
-}
+//     createWaveEffect(startPixel, 15, 100); // Wave effect for 15 pixels, 100 ms delay between steps
+//     delay(100); // Wait for a while before the next operation
+//   }
+// }
 
 void createWaveEffect(int startPixel, int waveLength, int delayTime)
 {
