@@ -137,6 +137,9 @@ byte* heats[NUM_STRIPS] = { heat_bottom, heat_top, heat_0, heat_4, heat_8 };
 
 
 
+int hue = 0;
+
+
 ///////////////////// Variables for Serial Communication /////////////////////
 //////////////////////////////////////////////////////////////////////////////
 
@@ -226,6 +229,13 @@ void setup()
 /////////////////////////////////////////////////////////////////////////////////
 
 /**
+
+mosfit - make sure it is good for micro controller
+
+Solid state relay
+
+
+
 I have 5 neopixel strips, 
 All strips are rgbw neopixel strips
 a 60 pixel strip called strip_bottom with LED_COUNT_bottom as the variable for the number of neopixels and LED_PIN_bottom noting its pin
@@ -280,8 +290,15 @@ void loop()
     if (runSequenceFromSerialInput())
       gradualChangeToColor(strip_bottom.Color(0,0,0), 1000);
   }
+
+
+  hue += 5; // Increment hue
+  if (hue >= 65536) {
+    hue = 0; // Reset hue when it reaches the end of the color wheel
+  }
+  uint32_t color = strips[0]->ColorHSV(hue); // Get the color for the current hue
   //runSnake(5,100);
-  sparkle(255, 0, 255, 30);
+  sparkle(color, 30);
 }
 
 //////////////////////////////////////////////////////
@@ -315,29 +332,29 @@ boolean runSequenceFromSerialInput()
     // }
     // Serial.println();
     char firstChar = 'd';
-    if (strcmp(parsedString, "rainbow") == 0) //parsedString[0] == 'r' 
+    if (strcmp(parsedString, "rainbow") == 0 || (parsedString[0] == 'r' && parsedString[1] == 'r'))
     {// 5, 30, 0
       rainbowFade(parsedIntegers[0], parsedIntegers[1]);
     } 
     else if (strcmp(parsedString, "rain") == 0) 
     {
-      rain(parsedIntegers[0], parsedIntegers[1]); //parsedString[0] == 'n'
+      rain(parsedIntegers[0], parsedIntegers[1] || (parsedString[0] == 'n' && parsedString[1] == 'n')); 
       //meteorRain(200,200,255,3, 32, true, 30,10);
       //colorWipTopAndBottom(parsedIntegers[0], parsedIntegers[1]);
     }
-    else if (strcmp(parsedString, "fire") == 0) //parsedString[0] == 'f'
+    else if (strcmp(parsedString, "fire") == 0 || (parsedString[0] == 'f' && parsedString[1] == 'f')) 
     {
       fire(parsedIntegers[0], parsedIntegers[1], parsedIntegers[2]);
     }
-    else if (strcmp(parsedString, "flood") == 0) // (parsedString[0] == 'd') //
+    else if (strcmp(parsedString, "flood") == 0 || (parsedString[0] == 'd') && (parsedString[1] == 'd'))
     {
       solid(strip_bottom.Color(parsedIntegers[0], parsedIntegers[1], parsedIntegers[2]), parsedIntegers[3], parsedIntegers[4]);
     }
-    else if (strcmp(parsedString, "clouds") == 0 || strcmp(parsedString, "thunderstorm") == 0) //parsedString[0] == 'c'
+    else if (strcmp(parsedString, "clouds") == 0 || strcmp(parsedString, "thunderstorm") == 0 ||(parsedString[0] == 'c' && parsedString[1] == 'c'))
     {
       thunderstorm(parsedIntegers[0], parsedIntegers[1]);
     }
-    else if (strcmp(parsedString, "test") == 0)  //parsedString[0] == 't'
+    else if (strcmp(parsedString, "test") == 0 && (parsedString[0] == 't' && parsedString[1] == 't'))
     {
       test(strip_bottom.Color(parsedIntegers[0], parsedIntegers[1], parsedIntegers[2]));
     }
@@ -345,9 +362,10 @@ boolean runSequenceFromSerialInput()
     {
       Serial.print("Unknown function name: ");
       Serial.println(parsedString);
+      runRandomFunction();
       // Clear the input buffer
       memset(inputString, 0, bufferSize);
-      return false;
+      //return false;
     }
   } 
   else 
@@ -364,6 +382,34 @@ boolean runSequenceFromSerialInput()
 }
 
 
+
+
+void runRandomFunction()
+{
+  int functionToRun = random(6);
+
+  if (functionToRun <= 1)
+  {
+    rainbowFade(15, 3);
+  }
+  else if (functionToRun <= 2)
+  {
+    rain(10, 10);
+  }
+  else if (functionToRun <= 3)
+  {
+    fire(10, 10, 10);
+  }
+  else if (functionToRun <= 4)
+  {
+    thunderstorm(10, 10);
+  }
+  else if (functionToRun <= 5)
+  {
+    solid(strip_bottom.Color(255, 0, 100, 0), 10, 10);
+  }
+}
+
 /////////////////////////////////////////////////////////////////////////////////////////////
 //////////////////////// High Level Light Functions /////////////////////////////////////////
 /////////////////////////////////////////////////////////////////////////////////////////////
@@ -377,23 +423,24 @@ boolean runSequenceFromSerialInput()
 // Call with Sparkle(0xff, 0xff, 0xff, 0);
 // This might be the best function to run as in between calls, but might needto add a before dimming
 
-void sparkle(byte red, byte green, byte blue, int SpeedDelay) {
+void sparkle(uint32_t color, int SpeedDelay) 
+{
   int pixel1 = random(NUM_LEDS);
   int pixel2 = random(NUM_LEDS);
   int pixel3 = random(NUM_LEDS);
   
-  setPixel(pixel1, red, green, blue);
-  setPixel(pixel2, red, green, blue);
-  setPixel(pixel3, red, green, blue);
+  setPixel(pixel1, color);
+  setPixel(pixel2, color);
+  setPixel(pixel3, color);
   showStrip();
   delay(SpeedDelay);
-  setPixel(pixel1, 0, 0, 0);
-  setPixel(pixel2, 0, 0, 0);
-  setPixel(pixel3, 0, 0, 0);
+  setPixel(pixel1, strip_bottom.Color(0, 0, 0));
+  setPixel(pixel2, strip_bottom.Color(0, 0, 0));
+  setPixel(pixel3, strip_bottom.Color(0, 0, 0));
 }
 
 
-void setPixel(int Pixel, byte red, byte green, byte blue) {
+void setPixel(int Pixel, uint32_t color) {
   int stripIndex = 0;
   int pixelIndex = Pixel;
 
@@ -404,7 +451,7 @@ void setPixel(int Pixel, byte red, byte green, byte blue) {
   }
 
   // Set the pixel color in the correct strip
-  strips[stripIndex]->setPixelColor(pixelIndex, strips[stripIndex]->Color(red, green, blue, 0));
+  strips[stripIndex]->setPixelColor(pixelIndex, color);
 }
 
 
@@ -522,7 +569,6 @@ void rainbowFade(int rainbowLoops, int speed)
 ///////// Rain ////////////
 ///////////////////////////
 
-//// TODO: does not take in intensity or duration, also does not really look like anything!!!
 
 
 /**
@@ -539,7 +585,7 @@ void rain(int duration, int intensity)
   gradualChangeToColor(baseColor, 500); // Gradually change to light blue over 5 seconds
   
   digitalWrite(SMOKE_PIN, HIGH);
-  delay(2000);
+  delay(6000);
   digitalWrite(SMOKE_PIN, LOW);
 
   strip_bottom.setBrightness(255);
@@ -1102,38 +1148,38 @@ void fire(int duration, int intensity, int smokeLevel)
   gradualChangeToColor(strip_bottom.Color(0,0,0), 1000);
 
   // Smoke delay base
-  uint32_t smokeDelay = 5000;
+  uint32_t smokeDelay = 7000;
   // duration base
   int rounds = 800; 
   // delay base (for intensity)
   int intensityDelay = 30;
 
-  if(smokeLevel > -1 && smokeLevel < 11)
+  if(smokeLevel > 5 && smokeLevel < 11)
   {
     smokeDelay = smokeDelay * (smokeLevel/10); 
     Serial.print("smoke delay: ");
     Serial.println(smokeDelay);
   }
   else
-    smokeDelay = smokeDelay / 2; // no value, give it halfpoint
+    smokeDelay = smokeDelay; // / 2; // no value, give it halfpoint
   
-  if(duration > 0 && duration < 11)
+  if(duration > 3 && duration < 11)
   {
     rounds = rounds * (duration/10); 
     Serial.print("Rounds: ");
     Serial.println(rounds);
   }
   else
-    rounds = rounds / 2; // no value, give it halfpoint
+    rounds = rounds; // 2; // no value, give it halfpoint
   
-  if(intensity > -1 && intensity < 11)
+  if(intensity > 3 && intensity < 11)
   {
     intensityDelay = intensityDelay * (intensity/10); 
     Serial.print("Intensity delay: ");
     Serial.println(intensityDelay);
   }
   else
-    intensityDelay = intensityDelay / 2; // no value, give it halfpoint
+    intensityDelay = intensityDelay; // 2; // no value, give it halfpoint
 
   // always blow at least some smoke here
   digitalWrite(SMOKE_PIN, HIGH);
@@ -1157,43 +1203,52 @@ void fire(int duration, int intensity, int smokeLevel)
 }
 
 
-void fireEffect(int delayTime) {
-  for (int s = 0; s < NUM_STRIPS; s++) {
+void fireEffect(int delayTime) 
+{
+  for (int s = 0; s < NUM_STRIPS; s++) 
+  {
     applyFireEffectToStrip(strips[s], heats[s], ledCounts[s]);
   }
 
-  for (int s = 0; s < NUM_STRIPS; s++) {
+  for (int s = 0; s < NUM_STRIPS; s++)
+  {
     strips[s]->show();
   }
 
   delay(delayTime);
 }
 
-void applyFireEffectToStrip(Adafruit_NeoPixel* strip, byte* heat, int ledCount) {
+void applyFireEffectToStrip(Adafruit_NeoPixel* strip, byte* heat, int ledCount) 
+{
   // Step 1. Cool down every cell a little
-  for (int i = 0; i < ledCount; i++) {
+  for (int i = 0; i < ledCount; i++) 
+  {
     heat[i] = qsub8(heat[i], random(0, ((55 * 10) / ledCount) + 2));
   }
 
   // Step 2. Heat from each cell drifts 'up' and diffuses a little
-  for (int i = ledCount - 1; i >= 2; i--) {
+  for (int i = ledCount - 1; i >= 2; i--) 
+  {
     heat[i] = (heat[i - 1] + heat[i - 2] + heat[i - 2]) / 3;
   }
 
   // Step 3. Randomly ignite new 'sparks' near the bottom
-  if (random(255) < 120) {
+  if (random(255) < 120) 
+  {
     int y = random(7);
     heat[y] = qadd8(heat[y], random(160, 255));
   }
 
   // Step 4. Convert heat to LED colors
-  for (int i = 0; i < ledCount; i++) {
+  for (int i = 0; i < ledCount; i++) 
+  {
     strip->setPixelColor(i, HeatColor(heat[i]));
   }
 }
 
 // Function to set a pixel color using hue, saturation, and brightness
-uint32_t ColorHSB(float hue, float sat, float brightness) {
+uint32_t ColorHSB(float hue, float sat, float brightness) 
+{
   hue = fmod(hue, 1.0f); // Wrap around if hue is greater than 1.0
   hue *= 6.0;            // Hue sector 0 to 5
   int i = floor(hue);    // Hue sector
@@ -1203,7 +1258,8 @@ uint32_t ColorHSB(float hue, float sat, float brightness) {
   float t = brightness * (1.0 - sat * (1.0 - f));
 
   float r, g, b;
-  switch (i) {
+  switch (i) 
+  {
     case 0:
       r = brightness;
       g = t;
@@ -1239,7 +1295,8 @@ uint32_t ColorHSB(float hue, float sat, float brightness) {
   return Adafruit_NeoPixel::Color((uint8_t)(r * 255), (uint8_t)(g * 255), (uint8_t)(b * 255));
 }
 
-uint32_t HeatColor(byte temperature) {
+uint32_t HeatColor(byte temperature) 
+{
   // Scale 'heat' down from 0-255 to 0-191
   byte t192 = scale8_video(temperature, 191);
 
@@ -1248,27 +1305,34 @@ uint32_t HeatColor(byte temperature) {
   heatramp <<= 2; // scale up to 0..252
 
   // Figure out which third of the spectrum we're in:
-  if (t192 & 0x80) { // hottest
+  if (t192 & 0x80) 
+  { // hottest
     return Adafruit_NeoPixel::Color(255, 255, heatramp / 2); // Reduce brightness
-  } else if (t192 & 0x40) { // middle
+  } else if (t192 & 0x40) 
+  { // middle
     return Adafruit_NeoPixel::Color(255, heatramp / 2, 0); // Reduce brightness
-  } else { // coolest
+  } 
+  else 
+  { // coolest
     return Adafruit_NeoPixel::Color(heatramp / 2, 0, 0); // Reduce brightness
   }
 }
 
 // Utility function to subtract with saturation at 0
-byte qsub8(byte i, byte j) {
+byte qsub8(byte i, byte j) 
+{
   return (i > j) ? i - j : 0;
 }
 
 // Utility function to add with saturation at 255
-byte qadd8(byte i, byte j) {
+byte qadd8(byte i, byte j) 
+{
   return (i + j > 255) ? 255 : i + j;
 }
 
 // Utility function to scale down a byte by a percentage (0-255)
-byte scale8_video(byte i, byte scale) {
+byte scale8_video(byte i, byte scale) 
+{
   return ((uint16_t)i * (uint16_t)scale) >> 8;
 }
 
@@ -1290,14 +1354,14 @@ void thunderstorm(int duration, int smokeLevel)
   // duration base
   int rounds = 20; 
 
-  if(smokeLevel > -1 && smokeLevel < 11)
+  if(smokeLevel > 5 && smokeLevel < 11)
   {
     smokeDelay = smokeDelay * (smokeLevel/10); 
     Serial.print("smoke delay: ");
     Serial.println(smokeDelay);
   }
   else
-    smokeDelay = smokeDelay / 2; // no value, give it halfpoint
+    smokeDelay = smokeDelay ; /// 2; // no value, give it halfpoint
   
   if(duration > -1 && duration < 11)
   {
@@ -1463,17 +1527,19 @@ void solid(uint32_t color, int delayLevel, int smokeLevel)
     strip_4.show();
     strip_8.show();
 
-    uint32_t smokeDelay = 4000;
+    uint32_t smokeDelay = 6000;
     uint32_t howLong = 15000;
 
-    if(smokeLevel > -1 && smokeLevel < 11)
+    if(smokeLevel > 5 && smokeLevel < 11)
     {
       smokeDelay = smokeDelay * (smokeLevel/10); 
+      
+      Serial.println(smokeLevel);
       Serial.print("smoke delay: ");
       Serial.println(smokeDelay);
     }
     else
-      smokeDelay = smokeDelay / 2; // no value, give it halfpoint
+      smokeDelay = smokeDelay; // / 2; // no value, give it halfpoint
     
     if (smokeDelay > 0 )
     {
